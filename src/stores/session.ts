@@ -16,7 +16,8 @@ type ServerSide = {
 type AccountSide = {
 	state: { readonly status: AccountStatus };
 	refresh: (server: string) => Promise<void>;
-	reset: () => void;
+	reset: () => void | Promise<void>;
+	reauthenticate: (server: string) => Promise<boolean>;
 };
 
 /** Where the app goes after Connect (FR-002-05, FR-003-08). */
@@ -30,8 +31,13 @@ export function createSession(server: ServerSide, account: AccountSide) {
 	function launch(): Promise<void> {
 		launching = (async () => {
 			await server.launchCheck();
-			if (server.state.saved !== null && server.state.launchFailure === null) {
-				await account.refresh(server.state.saved.url);
+			const saved = server.state.saved;
+			if (saved !== null && server.state.launchFailure === null) {
+				await account.refresh(saved.url);
+				// FR-006-02: the session ended since the last launch; log in again.
+				if (account.state.status === "signed_out") {
+					await account.reauthenticate(saved.url);
+				}
 			}
 		})();
 		return launching;
@@ -51,7 +57,7 @@ export function createSession(server: ServerSide, account: AccountSide) {
 			return "stay";
 		}
 		if (saved.url !== previous) {
-			account.reset();
+			await account.reset();
 		}
 		await account.refresh(saved.url);
 		return account.state.status === "signed_out" ? "sign_in" : "albums";

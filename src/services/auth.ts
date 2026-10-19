@@ -25,15 +25,15 @@ export type OtherMethods = { oauth: boolean; passkeys: boolean };
 const FAILURE_BY_STATUS: Record<number, SignInFailure> = { 401: "wrong_credentials", 429: "throttled" };
 
 /**
- * Signs in with `remember_me`, so Lychee's cookies keep the session across
- * launches (FR-002-01, ADR-002-01), then reads the account it belongs to.
- * The password goes into this one request and nowhere else (NFR-002-01).
+ * Signs in (FR-002-01) and reads the account it belongs to. No `remember_me`:
+ * the app stores the credentials and logs in again when the session ends
+ * (FR-006-01, ADR-006-01). The password goes into this one request only.
  */
 export async function signIn(server: string, username: string, password: string, deps: LycheeHttpDeps = nativeDeps): Promise<SignInResult> {
 	const http = createLycheeHttp(server, deps);
 	try {
 		const result = await withTimeout(async (signal): Promise<SignInResult> => {
-			const login = await http.post("Auth::login", { username, password, remember_me: true }, signal);
+			const login = await http.post("Auth::login", { username, password }, signal);
 			if (!login.ok) {
 				return { kind: FAILURE_BY_STATUS[login.status] ?? "failed" };
 			}

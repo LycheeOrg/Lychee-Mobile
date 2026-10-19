@@ -47,7 +47,7 @@ describe("signIn (FR-002-01)", () => {
 		const deps = server({ "POST Auth::login": () => empty(), "GET Auth::user": () => json(authUser) });
 
 		expect(await signIn(SERVER, "photographer", "secret", deps)).toEqual({ kind: "ok", account: { id: 1, username: "photographer" } });
-		expect(bodyOf(deps, "Auth::login")).toEqual({ username: "photographer", password: "secret", remember_me: true });
+		expect(bodyOf(deps, "Auth::login")).toEqual({ username: "photographer", password: "secret" });
 	});
 
 	it("reports wrong credentials on 401 (S-002-02)", async () => {

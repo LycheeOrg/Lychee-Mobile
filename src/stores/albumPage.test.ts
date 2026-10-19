@@ -236,3 +236,41 @@ describe("upload right (FR-005-02)", () => {
 		expect(album.state.canUpload).toBe(true);
 	});
 });
+
+describe("silent login (FR-006-02, S-006-02)", () => {
+	it("loads the album again once after a successful silent login", async () => {
+		const gallery = fakeGallery({ head: [{ kind: "unauthenticated" }, ok(head())], photos: [ok(page([photoTile("p1")], 1, 1))] });
+		const ctx = context(gallery, true, true);
+		const album = createAlbumPage("a1", new Set());
+
+		await album.load(ctx);
+
+		expect(album.state.status).toBe("ready");
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p1"]);
+	});
+
+	it("retries a later page once after a successful silent login", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head())],
+			photos: [ok(page([photoTile("p1")], 1, 2)), { kind: "unauthenticated" }, ok(page([photoTile("p2")], 2, 2))],
+		});
+		const ctx = context(gallery, true, true);
+		const album = createAlbumPage("a1", new Set());
+		await album.load(ctx);
+
+		await album.loadMore(ctx);
+
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p1", "p2"]);
+		expect(album.state.status).toBe("ready");
+		expect(ctx.onUnauthenticated).toHaveBeenCalledTimes(1);
+	});
+
+	it("asks to sign in when the silent login fails", async () => {
+		const ctx = context(fakeGallery({ head: [{ kind: "unauthenticated" }] }), true, false);
+		const album = createAlbumPage("a1", new Set());
+
+		await album.load(ctx);
+
+		expect(album.state.status).toBe("sign_in");
+	});
+});

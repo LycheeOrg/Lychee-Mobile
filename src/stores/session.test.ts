@@ -34,9 +34,10 @@ function fakeAccount(after: AccountStatus) {
 		refresh: vi.fn(async () => {
 			state.status = after;
 		}),
-		reset: vi.fn(() => {
+		reset: vi.fn(async () => {
 			state.status = "unknown";
 		}),
+		reauthenticate: vi.fn(async () => false),
 	};
 }
 
@@ -66,6 +67,26 @@ describe("launch (FR-002-03)", () => {
 		await createSession(server, account).launch();
 
 		expect(account.refresh).not.toHaveBeenCalled();
+	});
+});
+
+describe("launch with stored credentials (FR-006-02, S-006-03)", () => {
+	it("signs in silently when the session reads signed out", async () => {
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
+		const account = fakeAccount("signed_out");
+
+		await createSession(server, account).launch();
+
+		expect(account.reauthenticate).toHaveBeenCalledWith(A);
+	});
+
+	it("doesn't when already signed in", async () => {
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
+		const account = fakeAccount("signed_in");
+
+		await createSession(server, account).launch();
+
+		expect(account.reauthenticate).not.toHaveBeenCalled();
 	});
 });
 

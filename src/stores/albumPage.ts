@@ -40,7 +40,8 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 	// Bumped by every load, so pages requested before it are dropped.
 	let generation = 0;
 
-	async function load(ctx: GalleryContext): Promise<void> {
+	/** `retried`: already loaded again after a silent login (FR-006-02). */
+	async function load(ctx: GalleryContext, retried = false): Promise<void> {
 		const current = ++generation;
 		Object.assign(state, { status: "loading", failure: null, albums: [], photos: [], photoTotal: 0, moreFailed: false, loadingMore: false });
 		const result = await ctx.gallery.head(albumId);
@@ -48,7 +49,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 			return;
 		}
 		if (result.kind !== "ok") {
-			await fail(ctx, result.kind);
+			await failOrRetry(ctx, result.kind, retried);
 			return;
 		}
 		start(result.value);
@@ -56,7 +57,16 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 			state.status = "sensitive";
 			return;
 		}
-		await loadFirstPages(ctx, current);
+		await loadFirstPages(ctx, current, retried);
+	}
+
+	/** FR-006-02: a 401 gets one silent login and one more load. */
+	async function failOrRetry(ctx: GalleryContext, kind: GalleryFailure, retried: boolean): Promise<void> {
+		if (kind === "unauthenticated" && !retried && (await ctx.onUnauthenticated())) {
+			await load(ctx, true);
+			return;
+		}
+		await fail(ctx, kind);
 	}
 
 	function start(head: AlbumHead): void {
@@ -68,20 +78,20 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		updateHasMore();
 	}
 
-	async function loadFirstPages(ctx: GalleryContext, current: number): Promise<void> {
+	async function loadFirstPages(ctx: GalleryContext, current: number, retried = false): Promise<void> {
 		const failures = [state.nextAlbumsPage === null ? null : await loadAlbums(ctx, current), await loadPhotos(ctx, current)];
 		if (current !== generation) {
 			return;
 		}
 		const failure = failures.find((kind) => kind !== null && kind !== undefined);
 		if (failure !== undefined && failure !== null) {
-			await fail(ctx, failure);
+			await failOrRetry(ctx, failure, retried);
 			return;
 		}
 		state.status = "ready";
 	}
 
-	async function loadMore(ctx: GalleryContext): Promise<void> {
+	async function loadMore(ctx: GalleryContext, retried = false): Promise<void> {
 		if (!state.hasMore || state.loadingMore) {
 			return;
 		}
@@ -93,7 +103,9 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 			return;
 		}
 		state.loadingMore = false;
-		if (failure === "unauthenticated") {
+		if (failure === "unauthenticated" && !retried && (await ctx.onUnauthenticated())) {
+			await loadMore(ctx, true);
+		} else if (failure === "unauthenticated") {
 			await fail(ctx, failure);
 		} else if (failure !== null) {
 			state.moreFailed = true;
@@ -139,7 +151,6 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		if (kind === "unauthenticated") {
 			state.sessionEnded = ctx.signedIn;
 			state.status = "sign_in";
-			await ctx.onUnauthenticated();
 			return;
 		}
 		state.status = "failed";

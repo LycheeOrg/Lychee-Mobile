@@ -13,6 +13,9 @@ const config: CapacitorConfig = {
 	appId: "com.mlapaglia.lycheemobile",
 	appName: "Lychee",
 	webDir: "dist",
+	// NFR-006-01: the bridge's debug logging prints plugin results, which
+	// would include the stored credentials (ADR-006-01).
+	loggingBehavior: "none",
 	android: {
 		// ADR-003-02: thumbnails from local-network http servers load in the
 		// WebView, which serves the app from https://localhost.

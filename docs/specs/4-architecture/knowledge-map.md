@@ -7,21 +7,22 @@ How the pieces of Lychee-Mobile relate. Update it whenever modules, services, st
 - **Web app** (`src/`): Vue 3 + Ionic Vue 9, built by Vite+ into `dist/` (ADR-0001).
   - `src/main.ts` creates the app with `IonicVue` and the router, then mounts once the router is ready.
   - `src/router/index.ts`: `@ionic/vue-router` routes: `/` → `/albums`, `/albums/:id`, `/settings`, `/login` (FR-003-08).
-  - `src/App.vue`: runs `session.launch()` at startup: server check, then the account (FR-001-03, FR-002-03).
+  - `src/App.vue`: runs `session.launch()` at startup: server check, then the account, then a silent login when signed out (FR-001-03, FR-002-03, FR-006-02); opens `/login` when a stored password is rejected (FR-006-03).
   - `src/views/AlbumsPage.vue` (`/albums`, start page): root sections, gallery password prompt, sign-in and failure messages, hidden-sensitive line; sends a first launch to `/settings`; reloads when `galleryKey()` changed (Feature 003).
   - `src/views/AlbumPage.vue` (`/albums/:id`): sub-albums, photo grid with infinite scroll and pull to refresh, album password prompt, sensitive warning (Feature 003).
   - `src/views/SettingsPage.vue` (`/settings`, formerly `HomePage.vue`): server address field, Connect (through `session.connect()`, then `/login` or `/albums`), result line, launch banner with Retry, account line with Sign in / Sign out.
   - `src/components/`: `ThumbImage` (server URL with 2x `srcset`, placeholder on error), `AlbumTileGrid`, `PhotoGrid` (tap opens the viewer), `PasswordPrompt`, `GalleryMessage`, `PhotoViewer` (Swiper Zoom + Virtual with `renderExternal`, overlay, paging; full-screen `ion-modal.photo-viewer-modal` opened by `AlbumPage`), `PhotoSlide` (image with zoom container and original swap, video, press-and-hold live clip) (Feature 004, ADR-004-01), `UploadButton` (pick and queue, badge), `UploadSheet` (global, in `App.vue`) (Feature 005).
   - `src/views/LoginPage.vue` (`/login`): username, password, Sign in, Continue as guest, note for OAuth/passkey servers (Feature 002).
   - `src/stores/server.ts`: `createServerStore()` / `serverStore`: the one stored server (`@capacitor/preferences` keys `server_url`, `server_version`), `connect()` stores only after a successful check, `launchCheck()` re-checks and reports `launchFailure`.
-  - `src/stores/account.ts`: `createAccountStore()` / `accountStore`: `unknown` / `signed_out` / `signed_in` with the account, sign-in failure, other methods; nothing persisted (ADR-002-01).
+  - `src/stores/account.ts`: `createAccountStore()` / `accountStore`: `unknown` / `signed_out` / `signed_in` with the account, sign-in failure, other methods, `passwordRejected`; stores credentials on sign-in, `reauthenticate()` (single flight, 60 s cooldown), forgets on sign-out and reset (ADR-006-01).
+  - `src/services/credentials.ts`: `saveCredentials()`, `loadCredentials()` (server must match; unreadable → deleted), `forgetCredentials()` over `@aparajita/capacitor-secure-storage` (sync off, Keychain `afterFirstUnlockThisDeviceOnly`) (Feature 006).
   - `src/stores/session.ts`: `createSession()` / `session`: `launch()` (server check, then account), `whenLaunched()`, and `connect()` (reset on a new server, returns `sign_in`, `albums` or `stay`).
-  - `src/stores/galleryContext.ts`: `currentGalleryContext()` (gallery for the stored server, signed-in flag, account refresh on 401) and `galleryKey()`.
+  - `src/stores/galleryContext.ts`: `currentGalleryContext()` (gallery for the stored server, signed-in flag, `recoverSession()` on 401: silent login, else account refresh) and `galleryKey()`.
   - `src/stores/albumList.ts`: `createAlbumList()`: version gate, root and `Gallery::Init`, gallery unlock, sign-in handoff, `view()` with hidden sensitive albums.
   - `src/stores/albumPage.ts`: `createAlbumPage()`: head, sub-album pages then photo pages, load more with retry, album unlock, sensitive warning remembered in `acceptedSensitiveAlbums`; stale pages dropped by a generation counter.
   - `src/stores/uploadQueue.ts`: `createUploadQueue()` / `uploadQueue` (one file at a time, retry, clear, `finishedRuns`/`lastDoneAlbums`, stop on 401), `uploadTargetFor()`; `src/stores/uploadSheet.ts` (sheet open state).
   - `src/stores/sensitive.ts`: `sensitiveDisplay` (server NSFW settings, Show), `visibleSections()`, `visibleAlbums()`.
-  - `src/services/auth.ts`: `signIn()` (`Auth::login` with `remember_me`, then `Auth::user`), `readAccount()`, `signOut()` (`Auth::logout`, then clears the server's cookies), `readOtherMethods()` (`Auth::config`); 10 s each.
+  - `src/services/auth.ts`: `signIn()` (`Auth::login` without `remember_me`, then `Auth::user`), `readAccount()`, `signOut()` (`Auth::logout`, then clears the server's cookies), `readOtherMethods()` (`Auth::config`); 10 s each.
   - `src/services/gallery.ts`: `createGallery()` / `galleryFor(server)`: v2 `Albums`, `Gallery::Init`, `Album::head`, `Album::albums`, `Album::photos`, `Album::unlock`, `Gallery::unlock` on one session (ADR-003-01); failures mapped from status and Lychee's `exception`; `MIN_BROWSING_VERSION` 7.1.0.
   - `src/services/galleryParsers.ts`: raw JSON → `RootAlbums`, `AlbumHead`, `Page<AlbumTile>` / `Page<PhotoTile>` (with `total`; photos carry all size `variants` and `liveUrl`), `GallerySettings` (NFR-003-03, DO-004-01).
   - `src/services/upload.ts`: `readChunkSize()` (`Gallery::getUploadLimits`, ≤ 4 MiB), `uploadFile()` (chunked multipart `POST Photo`, `uuid_name` echo, result mapping) (Feature 005).
@@ -43,7 +44,8 @@ How the pieces of Lychee-Mobile relate. Update it whenever modules, services, st
 - **Native shells**: Capacitor 8 (`capacitor.config.ts`, app ID `com.mlapaglia.lycheemobile`, ADR-0003).
   - `android/`: Gradle project; `android/app/build.gradle` reads `VERSION_NAME`, `VERSION_CODE` and the `ANDROID_KEY*` variables for release builds.
   - `ios/`: Xcode project using Swift Package Manager (`ios/App/CapApp-SPM`).
-  - Libraries beyond the starter: `swiper` `14.3.0` (ADR-004-01), `@capawesome/capacitor-file-picker` `8.1.0` (ADR-005-01), both pinned.
+  - Libraries beyond the starter: `swiper` `14.3.0` (ADR-004-01), `@capawesome/capacitor-file-picker` `8.1.0` (ADR-005-01), `@aparajita/capacitor-secure-storage` `8.0.1` (ADR-006-01), all pinned.
+  - `capacitor.config.ts`: `loggingBehavior: "none"` (NFR-006-01).
   - App-local Android plugin `OriginalMediaPlugin.java` (registered in `MainActivity`): `pick()` (system picker with the undocumented `REQUEST_LOCATION_METADATA_ACCESS` and `ACCEPT_ORIGINAL_MEDIA_FORMAT`), `prepare()` (copy via `setRequireOriginal`, fallback, location check), `release()` (Feature 005).
   - Android permission `ACCESS_MEDIA_LOCATION` (ADR-005-01).
   - Plugins: `@capacitor/app`, `@capacitor/preferences`; `CapacitorHttp` enabled in `capacitor.config.ts` (ADR-001-01).

@@ -42,6 +42,8 @@ Once a server is connected (Feature 001), the user can sign in with their Lychee
 
 > Since Feature 003 (FR-003-08), the "home page" in FR-002-05, FR-002-06 and FR-002-08 is the settings page (`/settings`); a successful Connect that doesn't need sign-in, and leaving the sign-in page, go to the album list (`/albums`).
 
+> Since Feature 006 (ADR-006-01, 2026-10-19), sign-in no longer sends `remember_me`: the app stores the username and password in secure storage and logs in again when the session expires (FR-002-01, FR-002-02 and NFR-002-01 are superseded there).
+
 ## Non-Functional Requirements
 
 | ID | Requirement | Driver | Measurement | Dependencies | Source |

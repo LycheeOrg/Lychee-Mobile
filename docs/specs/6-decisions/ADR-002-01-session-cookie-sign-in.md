@@ -1,6 +1,6 @@
 # ADR-002-01: Stay signed in through Lychee's session cookies
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-006-01 (2026-10-19)
 - **Date:** 2026-10-19
 - **Related features/specs:** Feature 002 (docs/specs/4-architecture/features/002-login/spec.md)
 - **Related open questions:** Q-002-01

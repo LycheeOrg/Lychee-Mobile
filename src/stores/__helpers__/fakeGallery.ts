@@ -48,6 +48,7 @@ export function fakeGallery(answers: {
 	} satisfies Gallery;
 }
 
-export function context(gallery: Gallery, signedIn = false) {
-	return { gallery, signedIn, onUnauthenticated: vi.fn(async () => undefined) };
+/** `reauthenticates`: what a silent login after a 401 achieves (FR-006-02). */
+export function context(gallery: Gallery, signedIn = false, reauthenticates = false) {
+	return { gallery, signedIn, onUnauthenticated: vi.fn(async () => reauthenticates) };
 }

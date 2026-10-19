@@ -12,8 +12,12 @@ export type GalleryContext = {
 	gallery: Gallery;
 	/** Whether the account store believed the user was signed in. */
 	signedIn: boolean;
-	/** FR-003-06: called on a 401 so the account store re-reads the session. */
-	onUnauthenticated: () => Promise<void>;
+	/**
+	 * FR-003-06, FR-006-02: called on a 401. Logs in again with the stored
+	 * credentials; `true` means the call may be sent again once, `false` that
+	 * the account store re-read the session and the user must sign in.
+	 */
+	onUnauthenticated: () => Promise<boolean>;
 };
 
 /** The context for the stored server, or `null` when there is none. */
@@ -25,7 +29,7 @@ export function currentGalleryContext(): GalleryContext | null {
 	return {
 		gallery: galleryFor(saved.url),
 		signedIn: accountStore.state.status === "signed_in",
-		onUnauthenticated: () => accountStore.refresh(saved.url),
+		onUnauthenticated: () => recoverSession(saved.url),
 	};
 }
 
@@ -33,4 +37,13 @@ export function currentGalleryContext(): GalleryContext | null {
 export function galleryKey(): string {
 	const account = accountStore.state;
 	return `${serverStore.state.saved?.url ?? ""}|${account.status}|${account.account?.id ?? ""}`;
+}
+
+/** FR-006-02: silent login; otherwise re-read the account for the sign-in message. */
+export async function recoverSession(server: string): Promise<boolean> {
+	if (await accountStore.reauthenticate(server)) {
+		return true;
+	}
+	await accountStore.refresh(server);
+	return false;
 }
