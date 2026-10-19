@@ -51,3 +51,10 @@ updates:
       android:
         patterns:
           - "*"
+    ignore:
+      # Gradle 9.6 removed an internal API that the Android Gradle Plugin 8.x
+      # uses, and Capacitor 8's Android template is on AGP 8.13. Stay on the
+      # Gradle 8.14 line (8.14.6+ carries the 2026-10 security fixes) until the
+      # template moves to AGP 9.
+      - dependency-name: "gradle-wrapper"
+        versions: [">=9.0.0"]
