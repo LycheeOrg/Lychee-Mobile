@@ -2,7 +2,7 @@
 
 _Linked specification:_ [spec.md](spec.md)  
 _Linked tasks:_ [tasks.md](tasks.md)  
-_Status:_ Implemented  
+_Status:_ Complete  
 _Last updated:_ 2026-10-19
 
 > Guardrail: Keep this plan traceable back to the governing spec. Reference FR/NFR/Scenario IDs from `spec.md` where relevant, log any new high- or medium-impact questions in the feature's [open-questions.md](open-questions.md), and assume clarifications are resolved only when the spec's normative sections and, where applicable, ADRs under `docs/specs/6-decisions/` have been updated.
@@ -77,7 +77,7 @@ Run 2026-10-19 by the agent.
 
 ## Drift Gate Report
 
-Run 2026-10-19 by the agent (owner acknowledgement pending).
+Run 2026-10-19 by the agent; owner closed the feature the same day. CI could not run (GitHub Actions outage), so the exit criterion "green in CI" is replaced by the local gate and the local Android and iOS simulator builds below; the first CI run on PR #4 should still be checked once Actions recovers.
 
 **Preconditions:** 12/12 tasks `[x]`; `npx vp check`, `npx vp run typecheck`, `npx vp test` (6 files, 67 tests), `npx vp run build` green; Android debug build and iOS simulator build produced locally.
 
