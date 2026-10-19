@@ -175,3 +175,28 @@ describe("upload queue (FR-005-04, FR-005-05)", () => {
 		expect(queue.state.finishedRuns).toBe(0);
 	});
 });
+
+describe("silent login during uploads (FR-006-02, S-006-09)", () => {
+	it("uploads the file again once after a successful silent login", async () => {
+		const upload = uploader([{ kind: "unauthenticated" }, { kind: "done" }]);
+		const onUnauthenticated = vi.fn(async () => true);
+		const queue = createUploadQueue({ upload, onUnauthenticated });
+
+		queue.add([file("a"), file("b")], "a1");
+		await settle(queue);
+
+		expect(onUnauthenticated).toHaveBeenCalledTimes(1);
+		expect(upload.mock.calls.map((call) => call[0].name)).toEqual(["a", "a", "b"]);
+		expect(queue.state.entries.map((entry) => entry.state)).toEqual(["done", "done"]);
+	});
+
+	it("stops when the same file is refused again after the silent login", async () => {
+		const upload = uploader([{ kind: "unauthenticated" }, { kind: "unauthenticated" }]);
+		const queue = createUploadQueue({ upload, onUnauthenticated: vi.fn(async () => true) });
+
+		queue.add([file("a"), file("b")], "a1");
+		await settle(queue);
+
+		expect(queue.state.entries.map((entry) => entry.state)).toEqual(["failed", "waiting"]);
+	});
+});

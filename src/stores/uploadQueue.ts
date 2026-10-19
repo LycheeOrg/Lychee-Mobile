@@ -10,7 +10,7 @@ import { createLycheeHttp, type LycheeHttp } from "@/services/lycheeHttp";
 import { withOriginal } from "@/services/originalMedia";
 import type { PickedFile } from "@/services/picker";
 import { readChunkSize, uploadFile, type UploadResult } from "@/services/upload";
-import { accountStore } from "@/stores/account";
+import { recoverSession } from "@/stores/galleryContext";
 import { serverStore } from "@/stores/server";
 
 /** FR-005-02: where an Upload button sends files; `albumId: null` is Unsorted. */
@@ -34,7 +34,8 @@ export type QueueEntry = { id: number; file: PickedFile; albumId: string | null;
 
 type QueueDeps = {
 	upload: (file: PickedFile, albumId: string | null, onProgress: (sent: number) => void) => Promise<UploadResult>;
-	onUnauthenticated: () => void | Promise<void>;
+	/** FR-006-02: `true` when a silent login succeeded and the file may be sent again. */
+	onUnauthenticated: () => boolean | void | Promise<boolean | void>;
 };
 
 const FINISHED: EntryState[] = ["done", "skipped"];
@@ -79,6 +80,7 @@ export function createUploadQueue(deps: QueueDeps) {
 
 	async function run(): Promise<void> {
 		const doneAlbums = new Set<string | null>();
+		const retried = new Set<number>();
 		for (let entry = waiting(); entry !== undefined && !stopped; entry = waiting()) {
 			const current = entry;
 			current.state = "uploading";
@@ -91,8 +93,13 @@ export function createUploadQueue(deps: QueueDeps) {
 				doneAlbums.add(current.albumId);
 			}
 			if (result.kind === "unauthenticated") {
+				if (!retried.has(current.id) && (await deps.onUnauthenticated()) === true) {
+					// Signed in again: send this file again from the start.
+					retried.add(current.id);
+					Object.assign(current, { state: "waiting", sent: 0, result: null });
+					continue;
+				}
 				stopped = true;
-				await deps.onUnauthenticated();
 			}
 		}
 		if (doneAlbums.size > 0) {
@@ -155,6 +162,6 @@ export const uploadQueue = createUploadQueue({
 	upload: uploadToCurrentServer,
 	onUnauthenticated: () => {
 		const saved = serverStore.state.saved;
-		return saved === null ? undefined : accountStore.refresh(saved.url);
+		return saved === null ? false : recoverSession(saved.url);
 	},
 });

@@ -11,6 +11,7 @@
 
 		<IonContent :fullscreen="true" class="ion-padding">
 			<p v-if="host !== null" class="server">{{ host }}</p>
+			<p v-if="account.passwordRejected !== null" class="message failure">Your password changed or was reset. Sign in again.</p>
 			<IonList>
 				<IonItem>
 					<IonInput
@@ -82,6 +83,10 @@ const note = computed(() => otherMethodsNote(account.otherMethods));
 // FR-002-06: needs a stored server; FR-002-07: note for other methods.
 onIonViewWillEnter(async () => {
 	accountStore.clearFailure();
+	// FR-006-03: the stored password was rejected; keep the username.
+	if (account.passwordRejected !== null) {
+		username.value = account.passwordRejected;
+	}
 	if (serverStore.state.saved === null) {
 		await serverStore.load();
 	}
@@ -107,6 +112,7 @@ async function submit(): Promise<void> {
 
 // FR-003-08: signed in or not, the album list becomes the root.
 function leave(): void {
+	accountStore.clearPasswordRejected();
 	router.navigate("/albums", "root", "replace");
 }
 </script>

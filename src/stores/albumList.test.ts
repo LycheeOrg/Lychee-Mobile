@@ -166,3 +166,25 @@ describe("upload right (FR-005-02)", () => {
 		expect(list.state.canUpload).toBe(true);
 	});
 });
+
+describe("silent login (FR-006-02, S-006-02)", () => {
+	it("loads again once after a successful silent login", async () => {
+		const list = createAlbumList(createSensitiveDisplay());
+		const ctx = context(fakeGallery({ root: [{ kind: "unauthenticated" }, ok({ sections: SECTIONS, canUpload: false })] }), true, true);
+
+		await list.load(ctx, null);
+
+		expect(ctx.onUnauthenticated).toHaveBeenCalledTimes(1);
+		expect(list.state.status).toBe("ready");
+	});
+
+	it("asks to sign in when the retry is refused again", async () => {
+		const list = createAlbumList(createSensitiveDisplay());
+		const ctx = context(fakeGallery({ root: [{ kind: "unauthenticated" }, { kind: "unauthenticated" }] }), true, true);
+
+		await list.load(ctx, null);
+
+		expect(ctx.onUnauthenticated).toHaveBeenCalledTimes(1);
+		expect(list.state.status).toBe("sign_in");
+	});
+});

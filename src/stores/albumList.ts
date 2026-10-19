@@ -28,7 +28,8 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		unlockFailure: null as UnlockFailure | null,
 	});
 
-	async function load(ctx: GalleryContext, version: string | null): Promise<void> {
+	/** `retried`: already loaded again after a silent login (FR-006-02). */
+	async function load(ctx: GalleryContext, version: string | null, retried = false): Promise<void> {
 		state.failure = null;
 		if (!meetsMinimumVersion(version, MIN_BROWSING_VERSION)) {
 			state.status = "too_old";
@@ -43,6 +44,10 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 			state.status = "ready";
 			return;
 		}
+		if (root.kind === "unauthenticated" && !retried && (await ctx.onUnauthenticated())) {
+			await load(ctx, version, true);
+			return;
+		}
 		await fail(ctx, root.kind);
 	}
 
@@ -54,7 +59,6 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		if (kind === "unauthenticated") {
 			state.sessionEnded = ctx.signedIn;
 			state.status = "sign_in";
-			await ctx.onUnauthenticated();
 			return;
 		}
 		state.status = "failed";
