@@ -69,6 +69,7 @@ Run 2026-10-19 by the agent.
 - Knowledge map and roadmap updated; drift gate recorded.
 
 ## Follow-ups / Backlog
+- Tooling: `npm run ios` / `ios:live` fail on Xcode 27 until a native-run release includes native-run#408 and `@capacitor/cli` picks it up (Dependabot); recheck then.
 - Feature 002: consider Lychee API tokens, and propose per-device tokens upstream (one token per user today).
 
 ## Intent Log
@@ -98,4 +99,4 @@ Run 2026-10-19 by the agent (owner acknowledgement pending).
 **Lessons:**
 - Lychee's `api/v2` needs a JSON content type and CSRF even for public GETs; probing a real server early saved a wrong design.
 - `cap run --live-reload` stays in the foreground; `npx vp dev` must run in its own process group or Vite outlives the script.
-- This Xcode 27.1 install has no Simulator.app, so `cap run ios` cannot deploy; the simulator was driven headless with `simctl` (boot, install, launch, preferences through `defaults` on the container plist, screenshots).
+- Xcode 27 replaced Simulator.app with Device Hub. native-run 2.0.3 (used by `@capacitor/cli` 8.5.3 for `cap run ios`) still opens `…/Simulator.app` after installing, so the deploy fails before the app launches (capacitor#8620). Fixed upstream in native-run#408 (merged 2026-10-15, unreleased at the time of writing). Until a release lands, the simulator was driven with `xcodebuild` + `simctl` (boot, install, launch, preferences through `defaults` on the container plist, screenshots).

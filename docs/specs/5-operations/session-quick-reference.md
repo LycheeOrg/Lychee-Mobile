@@ -22,6 +22,7 @@
 | Copy web app into native shells | `npx cap sync` |
 | Build + run on a device | `npm run android` / `npm run ios` (`-- --target <id>`) |
 | Live reload on a device | `npm run android:live` / `npm run ios:live` (`-- --external` for Wi-Fi) |
+| iOS on Xcode 27 | `npm run ios[:live]` fails until native-run#408 is released (README); use `npm run build && npx cap sync ios && npm run open:ios`, then Run |
 | Open native IDEs | `npm run open:android` / `npm run open:ios` |
 | Android debug build | `cd android && ./gradlew assembleDebug` |
 
