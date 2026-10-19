@@ -19,17 +19,27 @@ type AccountSide = {
 	reset: () => void;
 };
 
-/** Where the app goes after Connect (FR-002-05). */
-export type AfterConnect = "sign_in" | "stay";
+/** Where the app goes after Connect (FR-002-05, FR-003-08). */
+export type AfterConnect = "sign_in" | "albums" | "stay";
 
 /** Sequences the server check and the account check. */
 export function createSession(server: ServerSide, account: AccountSide) {
+	let launching: Promise<void> = Promise.resolve();
+
 	/** FR-001-03 then FR-002-03: the account is read only from a reachable server. */
-	async function launch(): Promise<void> {
-		await server.launchCheck();
-		if (server.state.saved !== null && server.state.launchFailure === null) {
-			await account.refresh(server.state.saved.url);
-		}
+	function launch(): Promise<void> {
+		launching = (async () => {
+			await server.launchCheck();
+			if (server.state.saved !== null && server.state.launchFailure === null) {
+				await account.refresh(server.state.saved.url);
+			}
+		})();
+		return launching;
+	}
+
+	/** Resolves when the latest launch sequence finished (FR-003-08). */
+	function whenLaunched(): Promise<void> {
+		return launching;
 	}
 
 	/** FR-001-02 then FR-002-05. */
@@ -44,10 +54,10 @@ export function createSession(server: ServerSide, account: AccountSide) {
 			account.reset();
 		}
 		await account.refresh(saved.url);
-		return account.state.status === "signed_out" ? "sign_in" : "stay";
+		return account.state.status === "signed_out" ? "sign_in" : "albums";
 	}
 
-	return { launch, connect };
+	return { launch, whenLaunched, connect };
 }
 
 /** The app-wide session. */

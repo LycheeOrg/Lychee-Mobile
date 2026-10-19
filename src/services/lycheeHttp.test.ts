@@ -115,3 +115,52 @@ describe("createLycheeHttp: post and cookies (FR-002-01, FR-002-04)", () => {
 		expect(d.fetch.mock.calls.filter((call) => call[0] === `${BASE}/`)).toHaveLength(2);
 	});
 });
+
+describe("createLycheeHttp: expired sessions and queries (FR-003-07)", () => {
+	const expired = () => new Response(JSON.stringify({ message: "Session expired", exception: "SessionExpiredException" }), { status: 419 });
+
+	it("restarts the session and retries once after a 419 (S-003-09)", async () => {
+		const d = deps();
+		d.fetch
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(expired())
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+		const response = await createLycheeHttp(BASE, d).get("Albums");
+
+		expect(response.status).toBe(200);
+		expect(d.fetch.mock.calls.map((call) => call[0])).toEqual([`${BASE}/`, `${BASE}/api/v2/Albums`, `${BASE}/`, `${BASE}/api/v2/Albums`]);
+	});
+
+	it("returns a second 419 to the caller", async () => {
+		const d = deps();
+		d.fetch.mockImplementation(async (url) => (url === `${BASE}/` ? new Response("<html></html>") : expired()));
+
+		const response = await createLycheeHttp(BASE, d).post("Album::unlock", { album_id: "a" });
+
+		expect(response.status).toBe(419);
+		expect(d.fetch.mock.calls.filter((call) => call[0] !== `${BASE}/`)).toHaveLength(2);
+	});
+
+	it("resends the POST body on the retry", async () => {
+		const d = deps();
+		d.fetch
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(expired())
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+		await createLycheeHttp(BASE, d).post("Album::unlock", { album_id: "a" });
+
+		expect(JSON.parse(String(d.fetch.mock.calls[3][1]?.body))).toEqual({ album_id: "a" });
+	});
+
+	it("appends query parameters, encoded", async () => {
+		const d = deps();
+
+		await createLycheeHttp(BASE, d).get("Album::photos", undefined, { album_id: "a b/c", page: 2 });
+
+		expect(d.fetch.mock.calls[1][0]).toBe(`${BASE}/api/v2/Album::photos?album_id=a+b%2Fc&page=2`);
+	});
+});

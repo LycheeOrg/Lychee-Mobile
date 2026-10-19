@@ -1,0 +1,4 @@
+{
+	"message": "User is not authenticated",
+	"exception": "UnauthenticatedException"
+}

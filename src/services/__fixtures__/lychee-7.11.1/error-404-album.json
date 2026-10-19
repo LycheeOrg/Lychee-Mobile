@@ -1,0 +1,4 @@
+{
+	"message": "No query results for model [App\\Models\\BaseAlbumImpl] aaaaaaaaaaaaaaaaaaaaaaaa",
+	"exception": "NotFoundHttpException"
+}

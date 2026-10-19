@@ -2,7 +2,10 @@
 	<IonPage>
 		<IonHeader :translucent="true">
 			<IonToolbar>
-				<IonTitle>Lychee</IonTitle>
+				<IonButtons v-if="state.saved !== null" slot="start">
+					<IonBackButton default-href="/albums" />
+				</IonButtons>
+				<IonTitle>Settings</IonTitle>
 			</IonToolbar>
 		</IonHeader>
 
@@ -53,7 +56,21 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonPage, IonSpinner, IonTitle, IonToolbar, useIonRouter } from "@ionic/vue";
+import {
+	IonBackButton,
+	IonButton,
+	IonButtons,
+	IonContent,
+	IonHeader,
+	IonInput,
+	IonItem,
+	IonList,
+	IonPage,
+	IonSpinner,
+	IonTitle,
+	IonToolbar,
+	useIonRouter,
+} from "@ionic/vue";
 import { accountStore } from "@/stores/account";
 import { serverStore } from "@/stores/server";
 import { session } from "@/stores/session";
@@ -71,7 +88,8 @@ onMounted(async () => {
 	serverInput.value = state.saved?.url ?? "";
 });
 
-// FR-002-05: a signed-out session continues to the sign-in page.
+// FR-002-05, FR-003-08: a signed-out session continues to the sign-in page,
+// anything else to the album list.
 async function connect(): Promise<void> {
 	const next = await session.connect(serverInput.value);
 	if (state.status === "connected" && state.saved !== null) {
@@ -79,6 +97,8 @@ async function connect(): Promise<void> {
 	}
 	if (next === "sign_in") {
 		router.push("/login");
+	} else if (next === "albums") {
+		router.navigate("/albums", "root", "replace");
 	}
 }
 

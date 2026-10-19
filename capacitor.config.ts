@@ -13,6 +13,11 @@ const config: CapacitorConfig = {
 	appId: "com.mlapaglia.lycheemobile",
 	appName: "Lychee",
 	webDir: "dist",
+	android: {
+		// ADR-003-02: thumbnails from local-network http servers load in the
+		// WebView, which serves the app from https://localhost.
+		allowMixedContent: true,
+	},
 	plugins: {
 		// ADR-001-01: `fetch` uses the native HTTP stack and cookie store, so
 		// Lychee calls are not subject to WebView CORS.

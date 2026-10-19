@@ -18,9 +18,11 @@ export type LycheeHttpDeps = {
 	clearCookies: (url: string) => Promise<void>;
 };
 
+export type QueryParams = Record<string, string | number>;
+
 export type LycheeHttp = {
-	/** `GET {server}/api/v2/{path}` with the headers Lychee requires. */
-	get: (path: string, signal?: AbortSignal) => Promise<Response>;
+	/** `GET {server}/api/v2/{path}?{query}` with the headers Lychee requires. */
+	get: (path: string, signal?: AbortSignal, query?: QueryParams) => Promise<Response>;
 	/** `POST {server}/api/v2/{path}` with `body` as JSON. */
 	post: (path: string, body: unknown, signal?: AbortSignal) => Promise<Response>;
 	/** Drops the server's cookies; the next call starts a new session. */
@@ -28,6 +30,8 @@ export type LycheeHttp = {
 };
 
 const XSRF_COOKIE = "XSRF-TOKEN";
+/** Laravel's status for an expired session or CSRF token. */
+const SESSION_EXPIRED = 419;
 
 export const nativeDeps: LycheeHttpDeps = {
 	fetch: (input, init) => fetch(input, init),
@@ -39,7 +43,8 @@ export const nativeDeps: LycheeHttpDeps = {
  * Client for one Lychee server. Every `api/v2` request needs a JSON content
  * type and must pass CSRF: the first call loads `{server}/`, which sets the
  * session and `XSRF-TOKEN` cookies, and every API call echoes the token in
- * `X-XSRF-TOKEN`.
+ * `X-XSRF-TOKEN`. A 419 means the session expired: it is restarted and the
+ * request sent once more (FR-003-07).
  *
  * @param baseUrl normalised server URL, without trailing slash
  */
@@ -63,13 +68,23 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 		return headers;
 	}
 
-	async function request(method: "GET" | "POST", path: string, init: RequestInit): Promise<Response> {
+	async function send(method: "GET" | "POST", url: string, init: RequestInit): Promise<Response> {
 		await startSession(init.signal ?? undefined);
-		return deps.fetch(`${baseUrl}/api/v2/${path}`, { ...init, method, headers: await apiHeaders() });
+		return deps.fetch(url, { ...init, method, headers: await apiHeaders() });
+	}
+
+	async function request(method: "GET" | "POST", path: string, init: RequestInit, query?: QueryParams): Promise<Response> {
+		const url = `${baseUrl}/api/v2/${path}${queryString(query)}`;
+		const response = await send(method, url, init);
+		if (response.status !== SESSION_EXPIRED) {
+			return response;
+		}
+		hasSession = false;
+		return send(method, url, init);
 	}
 
 	return {
-		get: (path, signal) => request("GET", path, { signal }),
+		get: (path, signal, query) => request("GET", path, { signal }, query),
 		post: (path, body, signal) => request("POST", path, { body: JSON.stringify(body), signal }),
 		async clearCookies() {
 			await deps.clearCookies(baseUrl);
@@ -85,4 +100,12 @@ export async function readJson(response: Response): Promise<unknown> {
 	} catch {
 		return undefined;
 	}
+}
+
+function queryString(query: QueryParams | undefined): string {
+	if (query === undefined) {
+		return "";
+	}
+	const params = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+	return `?${params.toString()}`;
 }
