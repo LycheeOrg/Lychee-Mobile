@@ -1,0 +1,8 @@
+{
+	"upload_processing_limit": 4,
+	"upload_chunk_size": 10485760,
+	"can_watermark_optout": false,
+	"close_upload_on_success": false,
+	"folder_upload_enabled": false,
+	"folder_upload_max_depth": 3
+}

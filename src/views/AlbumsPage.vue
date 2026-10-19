@@ -4,6 +4,7 @@
 			<IonToolbar>
 				<IonTitle>Lychee</IonTitle>
 				<IonButtons slot="end">
+					<UploadButton v-if="state.status === 'ready' && state.canUpload" :target="{ albumId: null }" />
 					<IonButton router-link="/settings" aria-label="Settings">
 						<IonIcon slot="icon-only" :icon="settingsOutline" />
 					</IonButton>
@@ -55,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import {
 	IonButton,
 	IonButtons,
@@ -74,6 +75,7 @@ import {
 } from "@ionic/vue";
 import { settingsOutline } from "ionicons/icons";
 import AlbumTileGrid from "@/components/AlbumTileGrid.vue";
+import UploadButton from "@/components/UploadButton.vue";
 import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import { createAlbumList } from "@/stores/albumList";
@@ -81,6 +83,7 @@ import { currentGalleryContext, galleryKey } from "@/stores/galleryContext";
 import { sensitiveDisplay } from "@/stores/sensitive";
 import { serverStore } from "@/stores/server";
 import { session } from "@/stores/session";
+import { uploadQueue } from "@/stores/uploadQueue";
 import {
 	EMPTY_LIST,
 	GALLERY_PASSWORD,
@@ -109,6 +112,16 @@ onIonViewWillEnter(async () => {
 		await load();
 	}
 });
+
+// FR-005-05: reload after uploads into Unsorted.
+watch(
+	() => uploadQueue.state.finishedRuns,
+	() => {
+		if (uploadQueue.state.lastDoneAlbums.has(null)) {
+			void load();
+		}
+	},
+);
 
 async function load(): Promise<void> {
 	const ctx = currentGalleryContext();

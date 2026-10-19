@@ -1,0 +1,4 @@
+{
+	"message": "The photo has been skipped",
+	"exception": "PhotoSkippedException"
+}

@@ -19,7 +19,7 @@ export function photoTile(id: string): PhotoTile {
 }
 
 export function head(overrides: Partial<AlbumHead> = {}): AlbumHead {
-	return { id: "a1", title: "Holidays", kind: "album", hasSubAlbums: false, nsfwWarning: false, ...overrides };
+	return { id: "a1", title: "Holidays", kind: "album", hasSubAlbums: false, nsfwWarning: false, canUpload: false, ...overrides };
 }
 
 export function page<T>(items: T[], current: number, last: number, total = items.length): Page<T> {

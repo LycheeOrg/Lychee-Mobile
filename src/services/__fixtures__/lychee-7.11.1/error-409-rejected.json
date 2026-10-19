@@ -1,0 +1,4 @@
+{
+	"message": "The photo has been rejected",
+	"exception": "PhotoRejectedException"
+}

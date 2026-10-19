@@ -164,3 +164,35 @@ describe("createLycheeHttp: expired sessions and queries (FR-003-07)", () => {
 		expect(d.fetch.mock.calls[1][0]).toBe(`${BASE}/api/v2/Album::photos?album_id=a+b%2Fc&page=2`);
 	});
 });
+
+describe("createLycheeHttp: multipart (API-005-02)", () => {
+	it("posts FormData with the XSRF token and without a JSON content type", async () => {
+		const d = deps();
+		const form = new FormData();
+		form.append("chunk_number", "1");
+
+		await createLycheeHttp(BASE, d).postForm("Photo", form);
+
+		const [url, init] = d.fetch.mock.calls[1] as [string, RequestInit];
+		expect(url).toBe(`${BASE}/api/v2/Photo`);
+		expect(init.method).toBe("POST");
+		expect(init.body).toBe(form);
+		const headers = new Headers(init.headers);
+		expect(headers.get("Accept")).toBe("application/json");
+		expect(headers.get("X-XSRF-TOKEN")).toBe("abc==");
+		expect(headers.has("Content-Type")).toBe(false);
+	});
+
+	it("retries a multipart post once after a 419", async () => {
+		const d = deps();
+		d.fetch
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(new Response("{}", { status: 419 }))
+			.mockResolvedValueOnce(new Response("<html></html>"))
+			.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+
+		const response = await createLycheeHttp(BASE, d).postForm("Photo", new FormData());
+
+		expect(response.status).toBe(200);
+	});
+});

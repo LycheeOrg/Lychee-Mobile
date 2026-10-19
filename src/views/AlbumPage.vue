@@ -6,6 +6,9 @@
 					<IonBackButton default-href="/albums" />
 				</IonButtons>
 				<IonTitle>{{ state.title }}</IonTitle>
+				<IonButtons slot="end">
+					<UploadButton v-if="state.status === 'ready' && uploadTarget !== null" :target="uploadTarget" />
+				</IonButtons>
 			</IonToolbar>
 		</IonHeader>
 
@@ -75,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
 	IonBackButton,
@@ -102,9 +105,11 @@ import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import PhotoGrid from "@/components/PhotoGrid.vue";
 import PhotoViewer from "@/components/PhotoViewer.vue";
+import UploadButton from "@/components/UploadButton.vue";
 import { createAlbumPage } from "@/stores/albumPage";
 import { currentGalleryContext } from "@/stores/galleryContext";
 import { sensitiveDisplay, showsSensitive, visibleAlbums } from "@/stores/sensitive";
+import { uploadQueue, uploadTargetFor } from "@/stores/uploadQueue";
 import {
 	ALBUM_PASSWORD,
 	albumFailureMessage,
@@ -123,6 +128,19 @@ const state = album.state;
 const subAlbums = computed(() => visibleAlbums([...state.albums], showsSensitive(sensitiveDisplay)));
 const retryable = computed(() => state.failure === "unreachable" || state.failure === "failed");
 let loaded = false;
+// FR-005-02: where this page's Upload button sends files, if anywhere.
+const uploadTarget = computed(() => uploadTargetFor({ id: albumId, kind: state.kind, canUpload: state.canUpload }));
+
+// FR-005-05: reload after uploads into this album.
+watch(
+	() => uploadQueue.state.finishedRuns,
+	() => {
+		const target = uploadTarget.value;
+		if (target !== null && uploadQueue.state.lastDoneAlbums.has(target.albumId)) {
+			void load();
+		}
+	},
+);
 // FR-004-01: the photo the viewer opened on, and the one it last showed.
 const viewerStart = ref<number | null>(null);
 const viewerIndex = ref(0);
