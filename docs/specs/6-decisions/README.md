@@ -11,3 +11,4 @@ Numbering convention (same as LycheeOrg/Lychee): a decision raised by a feature 
 | [ADR-0003](ADR-0003-proof-of-concept-identity.md) | Accepted | Proof of concept under a personal account: public MIT repository, app ID `com.mlapaglia.lycheemobile`, moved to LycheeOrg after the PoC |
 | [ADR-001-01](ADR-001-01-native-http-transport.md) | Accepted | CapacitorHttp with the native cookie store; Lychee calls load `{server}/` for the session and `XSRF-TOKEN`, then send JSON headers and `X-XSRF-TOKEN` |
 | [ADR-001-02](ADR-001-02-local-network-plain-http.md) | Accepted | Plain http only for local-network hosts, enforced by the app; iOS `NSAllowsLocalNetworking`, Android cleartext allowed at OS level |
+| [ADR-002-01](ADR-002-01-session-cookie-sign-in.md) | Accepted | Stay signed in through Lychee's session and remember cookies in the native cookie store; no stored password or API token |

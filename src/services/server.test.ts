@@ -16,7 +16,8 @@ function server(versionResponse: () => Response | Promise<Response>) {
 		url.endsWith("/api/v2/Version") ? versionResponse() : new Response("<html></html>"),
 	);
 	const readCookies = vi.fn<LycheeHttpDeps["readCookies"]>(async () => ({ "XSRF-TOKEN": "t" }));
-	return { fetch, readCookies };
+	const clearCookies = vi.fn<LycheeHttpDeps["clearCookies"]>(async () => undefined);
+	return { fetch, readCookies, clearCookies };
 }
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

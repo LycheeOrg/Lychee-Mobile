@@ -38,36 +38,63 @@
 				<IonSpinner v-if="state.status === 'checking'" name="crescent" />
 				<span v-else>Connect</span>
 			</IonButton>
+
+			<div v-if="state.saved !== null && account.status !== 'unknown'" class="account">
+				<span v-if="account.status === 'signed_in'">Signed in as {{ account.account?.username }}</span>
+				<span v-else>Not signed in</span>
+				<IonButton v-if="account.status === 'signed_in'" size="small" fill="outline" :disabled="signingOut" @click="signOut"
+					>Sign out</IonButton
+				>
+				<IonButton v-else size="small" fill="outline" router-link="/login">Sign in</IonButton>
+			</div>
 		</IonContent>
 	</IonPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonPage, IonSpinner, IonTitle, IonToolbar } from "@ionic/vue";
+import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonPage, IonSpinner, IonTitle, IonToolbar, useIonRouter } from "@ionic/vue";
+import { accountStore } from "@/stores/account";
 import { serverStore } from "@/stores/server";
+import { session } from "@/stores/session";
 import { connectedMessage, failureMessage } from "@/utils/serverMessages";
 
 const { state } = serverStore;
+const account = accountStore.state;
+const router = useIonRouter();
 const serverInput = ref("");
 const retrying = ref(false);
+const signingOut = ref(false);
 
 onMounted(async () => {
 	await serverStore.load();
 	serverInput.value = state.saved?.url ?? "";
 });
 
+// FR-002-05: a signed-out session continues to the sign-in page.
 async function connect(): Promise<void> {
-	await serverStore.connect(serverInput.value);
+	const next = await session.connect(serverInput.value);
 	if (state.status === "connected" && state.saved !== null) {
 		serverInput.value = state.saved.url;
+	}
+	if (next === "sign_in") {
+		router.push("/login");
 	}
 }
 
 async function retry(): Promise<void> {
 	retrying.value = true;
-	await serverStore.launchCheck();
+	await session.launch();
 	retrying.value = false;
+}
+
+async function signOut(): Promise<void> {
+	if (state.saved === null) {
+		return;
+	}
+	signingOut.value = true;
+	await accountStore.signOut(state.saved.url);
+	signingOut.value = false;
 }
 
 function hostOf(url: string): string {
@@ -103,5 +130,13 @@ function hostOf(url: string): string {
 
 .connected {
 	color: var(--ion-color-success);
+}
+
+.account {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 16px 4px 0;
 }
 </style>
