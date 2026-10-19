@@ -20,6 +20,8 @@
 | Tests | `npx vp test` / `npx vp test <file>` |
 | Build web app | `npx vp run build` |
 | Copy web app into native shells | `npx cap sync` |
+| Build + run on a device | `npm run android` / `npm run ios` (`-- --target <id>`) |
+| Live reload on a device | `npm run android:live` / `npm run ios:live` (`-- --external` for Wi-Fi) |
 | Open native IDEs | `npm run open:android` / `npm run open:ios` |
 | Android debug build | `cd android && ./gradlew assembleDebug` |
 

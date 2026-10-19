@@ -13,6 +13,10 @@
 		"build": "vp build",
 		"typecheck": "vue-tsc --noEmit -p tsconfig.json --skipLibCheck",
 		"sync": "vp build && cap sync",
+		"android": "vp build && cap run android",
+		"android:live": "node scripts/live-reload.mjs android",
+		"ios": "vp build && cap run ios",
+		"ios:live": "node scripts/live-reload.mjs ios",
 		"open:android": "cap open android",
 		"open:ios": "cap open ios"
 	},
