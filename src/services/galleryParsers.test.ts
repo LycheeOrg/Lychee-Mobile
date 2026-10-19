@@ -115,7 +115,7 @@ describe("parseAlbumPage (DO-003-05)", () => {
 		const page = parseAlbumPage(albumAlbums);
 
 		expect(page?.items.map((album) => album.title)).toEqual(["2024", "Private"]);
-		expect(page).toMatchObject({ page: 1, lastPage: 2 });
+		expect(page).toMatchObject({ page: 1, lastPage: 2, total: 31 });
 	});
 
 	it("rejects a payload without data", () => {
@@ -128,7 +128,7 @@ describe("parsePhotoPage (DO-003-02)", () => {
 		const page = parsePhotoPage(albumPhotos);
 
 		expect(page?.items).toEqual([
-			{
+			expect.objectContaining({
 				id: "g7Hi8Jk9Lm0No1Pq2Rs3Tu4V",
 				title: "Beach",
 				kind: "photo",
@@ -136,12 +136,41 @@ describe("parsePhotoPage (DO-003-02)", () => {
 					src: `${S}/thumb/7a/8b/7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d.jpeg`,
 					src2x: `${S}/thumb2x/7a/8b/7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d@2x.jpeg`,
 				},
-			},
+			}),
 			expect.objectContaining({ title: "Waves", kind: "video" }),
 			expect.objectContaining({ title: "Sparkler", kind: "live" }),
-			{ id: "j0Kl1Mn2Op3Qr4St5Uv6Wx7Y", title: "IMG_0001", kind: "raw", thumb: null },
+			expect.objectContaining({ id: "j0Kl1Mn2Op3Qr4St5Uv6Wx7Y", title: "IMG_0001", kind: "raw", thumb: null }),
 		]);
-		expect(page).toMatchObject({ page: 1, lastPage: 2 });
+		expect(page).toMatchObject({ page: 1, lastPage: 2, total: 104 });
+	});
+
+	it("reads every size variant for the viewer (DO-004-01)", () => {
+		const beach = parsePhotoPage(albumPhotos)?.items[0];
+		const h = "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d";
+
+		expect(beach?.variants).toEqual({
+			medium2x: null,
+			medium: { url: `${S}/medium/7a/8b/${h}.jpeg`, width: 1440, height: 1080 },
+			original: { url: `${S}/original/7a/8b/${h}.jpeg`, width: 4000, height: 3000 },
+			small2x: { url: `${S}/small2x/7a/8b/${h}@2x.jpeg`, width: 960, height: 720 },
+			small: { url: `${S}/small/7a/8b/${h}.jpeg`, width: 480, height: 360 },
+			thumb2x: { url: `${S}/thumb2x/7a/8b/${h}@2x.jpeg`, width: 400, height: 400 },
+			thumb: { url: `${S}/thumb/7a/8b/${h}.jpeg`, width: 200, height: 200 },
+		});
+		expect(beach?.liveUrl).toBeNull();
+	});
+
+	it("keeps a variant without a URL as null (no full-photo access)", () => {
+		const photo = albumPhotos.photos[0];
+		const downgraded = { ...photo, size_variants: { ...photo.size_variants, original: { ...photo.size_variants.original, url: null } } };
+
+		expect(parsePhotoPage({ ...albumPhotos, photos: [downgraded] })?.items[0].variants.original).toBeNull();
+	});
+
+	it("reads the live photo clip", () => {
+		const sparkler = parsePhotoPage(albumPhotos)?.items[2];
+
+		expect(sparkler?.liveUrl).toBe(`${S}/original/9c/0d/9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f.mov`);
 	});
 
 	it("uses the thumb alone when there is no 2x variant", () => {

@@ -23,6 +23,7 @@ describe("album page load (FR-003-02)", () => {
 		expect(album.state.albums.map((a) => a.id)).toEqual(["2024"]);
 		expect(album.state.photos.map((p) => p.id)).toEqual(["p1"]);
 		expect(album.state.hasMore).toBe(true);
+		expect(album.state.photoTotal).toBe(1);
 		expect(gallery.albums).toHaveBeenCalledWith("a1", 1);
 		expect(gallery.photos).toHaveBeenCalledWith("a1", 1);
 	});
@@ -210,5 +211,16 @@ describe("sensitive album warning (FR-003-09, S-003-16)", () => {
 		const again = createAlbumPage("a1", seen);
 		await again.load(ctx);
 		expect(again.state.status).toBe("ready");
+	});
+});
+
+describe("photo total (DO-004-02, FR-004-07)", () => {
+	it("takes the album's photo count from the photo pages", async () => {
+		const gallery = fakeGallery({ head: [ok(head())], photos: [ok(page([photoTile("p1")], 1, 3, 250))] });
+		const album = createAlbumPage("a1", new Set());
+
+		await album.load(context(gallery));
+
+		expect(album.state.photoTotal).toBe(250);
 	});
 });

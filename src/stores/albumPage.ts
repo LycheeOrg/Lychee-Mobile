@@ -26,6 +26,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		title: "",
 		albums: [] as AlbumTile[],
 		photos: [] as PhotoTile[],
+		photoTotal: 0,
 		nextAlbumsPage: null as number | null,
 		nextPhotosPage: null as number | null,
 		hasMore: false,
@@ -39,7 +40,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 
 	async function load(ctx: GalleryContext): Promise<void> {
 		const current = ++generation;
-		Object.assign(state, { status: "loading", failure: null, albums: [], photos: [], moreFailed: false, loadingMore: false });
+		Object.assign(state, { status: "loading", failure: null, albums: [], photos: [], photoTotal: 0, moreFailed: false, loadingMore: false });
 		const result = await ctx.gallery.head(albumId);
 		if (current !== generation) {
 			return;
@@ -109,6 +110,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		const result = await ctx.gallery.photos(albumId, state.nextPhotosPage ?? 1);
 		return apply(result, current, (page) => {
 			state.photos = [...state.photos, ...page.items];
+			state.photoTotal = page.total;
 			state.nextPhotosPage = nextPage(page);
 		});
 	}

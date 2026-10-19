@@ -14,3 +14,4 @@ Numbering convention (same as LycheeOrg/Lychee): a decision raised by a feature 
 | [ADR-002-01](ADR-002-01-session-cookie-sign-in.md) | Accepted | Stay signed in through Lychee's session and remember cookies in the native cookie store; no stored password or API token |
 | [ADR-003-01](ADR-003-01-v2-api-for-browsing.md) | Accepted | Browse through the v2 paginated API (Lychee 7.1.0+); v3 struct-of-arrays is off by default |
 | [ADR-003-02](ADR-003-02-webview-thumbnails.md) | Accepted | Thumbnails are `<img>` elements with the server's URLs; Android allows mixed content for local http servers |
+| [ADR-004-01](ADR-004-01-swiper-photo-viewer.md) | Accepted | Swiper 14.3.0 (pinned) with Zoom and Virtual for the photo viewer's swipe and zoom |
