@@ -1,0 +1,15 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Lychee-Mobile contributors.
+ *
+ * Ionic theme variables: https://ionicframework.com/docs/theming/basics
+ */
+
+:root {
+	--ion-color-primary: #0ea5e9;
+	--ion-color-primary-rgb: 14, 165, 233;
+	--ion-color-primary-contrast: #ffffff;
+	--ion-color-primary-contrast-rgb: 255, 255, 255;
+	--ion-color-primary-shade: #0c91cd;
+	--ion-color-primary-tint: #26aeeb;
+}

@@ -1,0 +1,31 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Local agent session snapshot (see AGENTS.md)
+docs/specs/_current-session.md
+
+# Environment and signing material: never commit these
+.env
+.env.*
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+play-store-service-account*.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+vendor/bundle/
+.bundle/
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

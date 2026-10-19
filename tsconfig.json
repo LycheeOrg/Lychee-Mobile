@@ -1,0 +1,22 @@
+{
+	"include": ["src/**/*", "src/**/*.vue"],
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023", "DOM", "DOM.Iterable"],
+		"module": "es2022",
+		"moduleResolution": "bundler",
+		"rootDir": "./src",
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"types": ["vite-plus/client"],
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	}
+}

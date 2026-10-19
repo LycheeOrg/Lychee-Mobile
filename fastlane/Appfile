@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Lychee-Mobile contributors.
+
+# Proof-of-concept identifier (ADR-0003).
+app_identifier("com.mlapaglia.lycheemobile")
+package_name("com.mlapaglia.lycheemobile")
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]

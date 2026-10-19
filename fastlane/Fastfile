@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Lychee-Mobile contributors.
+#
+# Release lanes (ADR-0002), run by .github/workflows/release.yml:
+#   alpha       TestFlight / Google Play internal testing (every push to main)
+#   production  App Store review / Google Play production draft (GitHub release)
+#
+# The web app must be built and synced first: `npx vp build && npx cap sync`.
+# Versions come from the environment: VERSION_NAME (e.g. 1.2.0) and
+# BUILD_NUMBER (monotonic integer, the workflow run number).
+
+default_platform(:android)
+
+APP_ID = "com.mlapaglia.lycheemobile"
+
+def version_name
+  ENV.fetch("VERSION_NAME")
+end
+
+def build_number
+  ENV.fetch("BUILD_NUMBER")
+end
+
+platform :android do
+  private_lane :signed_bundle do
+    gradle(
+      project_dir: "android",
+      task: "bundle",
+      build_type: "Release",
+    )
+    lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH]
+  end
+
+  private_lane :upload do |options|
+    upload_to_play_store(
+      package_name: APP_ID,
+      aab: options[:aab],
+      track: options[:track],
+      release_status: options[:release_status],
+      json_key_data: ENV.fetch("PLAY_STORE_SERVICE_ACCOUNT_JSON"),
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Build and upload to the Google Play internal testing track"
+  lane :alpha do
+    upload(aab: signed_bundle, track: "internal", release_status: "completed")
+  end
+
+  desc "Build and upload a draft release to the Google Play production track"
+  lane :production do
+    upload(aab: signed_bundle, track: "production", release_status: "draft")
+  end
+end
+
+platform :ios do
+  private_lane :signed_ipa do
+    setup_ci
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_KEY_P8_BASE64"),
+      is_key_content_base64: true,
+    )
+    match(type: "appstore", readonly: true, api_key: api_key)
+    update_code_signing_settings(
+      path: "ios/App/App.xcodeproj",
+      targets: ["App"],
+      use_automatic_signing: false,
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      bundle_identifier: APP_ID,
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore #{APP_ID}",
+    )
+    build_app(
+      project: "ios/App/App.xcodeproj",
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build/ios",
+      xcargs: "CURRENT_PROJECT_VERSION=#{build_number} MARKETING_VERSION=#{version_name}",
+    )
+    api_key
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :alpha do
+    api_key = signed_ipa
+    upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
+  end
+
+  desc "Build, upload to App Store Connect and submit for review (released manually)"
+  lane :production do
+    api_key = signed_ipa
+    upload_to_app_store(
+      api_key: api_key,
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      run_precheck_before_submit: false,
+      submission_information: { add_id_info_uses_idfa: false },
+    )
+  end
+end

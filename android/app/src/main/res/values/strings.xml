@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lychee</string>
+    <string name="title_activity_main">Lychee</string>
+    <string name="package_name">com.mlapaglia.lycheemobile</string>
+    <string name="custom_url_scheme">com.mlapaglia.lycheemobile</string>
+</resources>

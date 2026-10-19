@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Lychee-Mobile contributors.
+#
+# iOS signing certificates and profiles live, encrypted with MATCH_PASSWORD,
+# in a private git repository (MATCH_GIT_URL). See
+# docs/specs/5-operations/runbook-releases.md.
+
+git_url(ENV["MATCH_GIT_URL"]) if ENV["MATCH_GIT_URL"]
+storage_mode("git")
+type("appstore")
+app_identifier(["com.mlapaglia.lycheemobile"])
