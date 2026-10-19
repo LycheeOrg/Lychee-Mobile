@@ -3,7 +3,7 @@
 		<IonHeader :translucent="true">
 			<IonToolbar>
 				<IonButtons slot="start">
-					<IonBackButton default-href="/home" />
+					<IonBackButton default-href="/settings" />
 				</IonButtons>
 				<IonTitle>Sign in</IonTitle>
 			</IonToolbar>
@@ -105,12 +105,9 @@ async function submit(): Promise<void> {
 	}
 }
 
+// FR-003-08: signed in or not, the album list becomes the root.
 function leave(): void {
-	if (router.canGoBack()) {
-		router.back();
-	} else {
-		router.replace("/home");
-	}
+	router.navigate("/albums", "root", "replace");
 }
 </script>
 

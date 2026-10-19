@@ -5,18 +5,31 @@
 
 import { createRouter, createWebHistory } from "@ionic/vue-router";
 import type { RouteRecordRaw } from "vue-router";
-import HomePage from "@/views/HomePage.vue";
+import AlbumPage from "@/views/AlbumPage.vue";
+import AlbumsPage from "@/views/AlbumsPage.vue";
 import LoginPage from "@/views/LoginPage.vue";
+import SettingsPage from "@/views/SettingsPage.vue";
 
+// FR-003-08: the album list is the start page; it sends a first launch to settings.
 const routes: RouteRecordRaw[] = [
 	{
 		path: "/",
-		redirect: "/home",
+		redirect: "/albums",
 	},
 	{
-		path: "/home",
-		name: "home",
-		component: HomePage,
+		path: "/albums",
+		name: "albums",
+		component: AlbumsPage,
+	},
+	{
+		path: "/albums/:id",
+		name: "album",
+		component: AlbumPage,
+	},
+	{
+		path: "/settings",
+		name: "settings",
+		component: SettingsPage,
 	},
 	{
 		path: "/login",

@@ -78,11 +78,11 @@ describe("connect (FR-002-05)", () => {
 		expect(account.refresh).toHaveBeenCalledWith(A);
 	});
 
-	it("stays when already signed in to that server", async () => {
+	it("goes to the albums when already signed in to that server (FR-003-08)", async () => {
 		const server = fakeServer({ url: A, version: null }, [{ saved: { url: A, version: null }, status: "connected" }]);
 		const account = fakeAccount("signed_in");
 
-		expect(await createSession(server, account).connect("a.example.com")).toBe("stay");
+		expect(await createSession(server, account).connect("a.example.com")).toBe("albums");
 		expect(account.reset).not.toHaveBeenCalled();
 	});
 
@@ -105,9 +105,33 @@ describe("connect (FR-002-05)", () => {
 		expect(account.reset).not.toHaveBeenCalled();
 	});
 
-	it("stays when the account can't be read", async () => {
+	it("goes to the albums when the account can't be read (FR-003-08)", async () => {
 		const server = fakeServer(null, [{ saved: { url: A, version: null }, status: "connected" }]);
 
-		expect(await createSession(server, fakeAccount("unknown")).connect("a.example.com")).toBe("stay");
+		expect(await createSession(server, fakeAccount("unknown")).connect("a.example.com")).toBe("albums");
+	});
+});
+
+describe("whenLaunched (FR-003-08)", () => {
+	it("resolves once the launch sequence finished", async () => {
+		let release: () => void = () => undefined;
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
+		server.launchCheck.mockImplementationOnce(() => new Promise<void>((resolve) => (release = resolve)));
+		const account = fakeAccount("signed_in");
+		const session = createSession(server, account);
+
+		void session.launch();
+		let launched = false;
+		const waiting = session.whenLaunched().then(() => (launched = true));
+		await Promise.resolve();
+		expect(launched).toBe(false);
+
+		release();
+		await waiting;
+		expect(launched).toBe(true);
+	});
+
+	it("resolves at once when no launch ran", async () => {
+		await expect(createSession(fakeServer(null, []), fakeAccount("unknown")).whenLaunched()).resolves.toBeUndefined();
 	});
 });

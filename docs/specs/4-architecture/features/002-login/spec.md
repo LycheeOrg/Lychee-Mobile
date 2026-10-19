@@ -40,6 +40,8 @@ Once a server is connected (Feature 001), the user can sign in with their Lychee
 | FR-002-07 | Other sign-in methods. | The sign-in page reads `GET /api/v2/Auth::config`; when `oauthProviders` is not empty or `u2f_enabled` is true it shows "This server also offers <OAuth / passkey> sign-in. The app supports only username and password for now." | — | Request fails → no note. | — | Q-002-02 |
 | FR-002-08 | Account line on the home page. | Under Connect, when a server is stored and the account is known: "Signed in as <username>" with Sign out, or "Not signed in" with Sign in (opens `/login`). | — | Account `unknown` → no line. | — | Q-002-04 |
 
+> Since Feature 003 (FR-003-08), the "home page" in FR-002-05, FR-002-06 and FR-002-08 is the settings page (`/settings`); a successful Connect that doesn't need sign-in, and leaving the sign-in page, go to the album list (`/albums`).
+
 ## Non-Functional Requirements
 
 | ID | Requirement | Driver | Measurement | Dependencies | Source |

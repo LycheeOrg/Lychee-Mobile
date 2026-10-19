@@ -1,0 +1,4 @@
+{
+	"message": "Gallery password required",
+	"exception": "GalleryPasswordRequiredException"
+}
