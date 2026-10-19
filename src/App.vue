@@ -7,10 +7,10 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { IonApp, IonRouterOutlet } from "@ionic/vue";
-import { serverStore } from "@/stores/server";
+import { session } from "@/stores/session";
 
-// FR-001-03: re-check the stored server at every launch.
+// FR-001-03, FR-002-03: re-check the stored server, then read the account.
 onMounted(() => {
-	void serverStore.launchCheck();
+	void session.launch();
 });
 </script>

@@ -14,11 +14,17 @@ export type LycheeHttpDeps = {
 	fetch: (input: string, init?: RequestInit) => Promise<Response>;
 	/** Cookies the server set, by name, URL-encoded as stored. */
 	readCookies: (url: string) => Promise<Record<string, string>>;
+	/** Forgets every cookie of the server (session, remember, XSRF). */
+	clearCookies: (url: string) => Promise<void>;
 };
 
 export type LycheeHttp = {
 	/** `GET {server}/api/v2/{path}` with the headers Lychee requires. */
 	get: (path: string, signal?: AbortSignal) => Promise<Response>;
+	/** `POST {server}/api/v2/{path}` with `body` as JSON. */
+	post: (path: string, body: unknown, signal?: AbortSignal) => Promise<Response>;
+	/** Drops the server's cookies; the next call starts a new session. */
+	clearCookies: () => Promise<void>;
 };
 
 const XSRF_COOKIE = "XSRF-TOKEN";
@@ -26,6 +32,7 @@ const XSRF_COOKIE = "XSRF-TOKEN";
 export const nativeDeps: LycheeHttpDeps = {
 	fetch: (input, init) => fetch(input, init),
 	readCookies: (url) => CapacitorCookies.getCookies({ url }),
+	clearCookies: (url) => CapacitorCookies.clearCookies({ url }),
 };
 
 /**
@@ -56,10 +63,26 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 		return headers;
 	}
 
+	async function request(method: "GET" | "POST", path: string, init: RequestInit): Promise<Response> {
+		await startSession(init.signal ?? undefined);
+		return deps.fetch(`${baseUrl}/api/v2/${path}`, { ...init, method, headers: await apiHeaders() });
+	}
+
 	return {
-		async get(path, signal) {
-			await startSession(signal);
-			return deps.fetch(`${baseUrl}/api/v2/${path}`, { method: "GET", headers: await apiHeaders(), signal });
+		get: (path, signal) => request("GET", path, { signal }),
+		post: (path, body, signal) => request("POST", path, { body: JSON.stringify(body), signal }),
+		async clearCookies() {
+			await deps.clearCookies(baseUrl);
+			hasSession = false;
 		},
 	};
+}
+
+/** The response body as JSON, or `undefined` when it is not JSON. */
+export async function readJson(response: Response): Promise<unknown> {
+	try {
+		return await response.json();
+	} catch {
+		return undefined;
+	}
 }

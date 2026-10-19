@@ -3,7 +3,8 @@
  * Copyright (c) 2026 Lychee-Mobile contributors.
  */
 
-import { createLycheeHttp, nativeDeps, type LycheeHttpDeps } from "@/services/lycheeHttp";
+import { createLycheeHttp, nativeDeps, readJson, type LycheeHttpDeps } from "@/services/lycheeHttp";
+import { TIMED_OUT, withTimeout } from "@/services/timeout";
 import { isLocalNetworkHost } from "@/utils/networkPolicy";
 import { normalizeServerUrl } from "@/utils/serverUrl";
 
@@ -15,7 +16,6 @@ export type ServerFailure = "invalid_address" | "insecure_http" | "unreachable" 
 /** DO-001-01. */
 export type ServerCheckResult = { kind: "ok"; url: string; version: string | null } | { kind: ServerFailure };
 
-const TIMED_OUT = Symbol("timed out");
 const TLS_ERROR = /certificat|ssl|tls|trust anchor|handshake/i;
 
 /**
@@ -32,18 +32,8 @@ export async function checkServer(input: string, deps: LycheeHttpDeps = nativeDe
 		return { kind: "insecure_http" };
 	}
 
-	const controller = new AbortController();
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
-		timer = setTimeout(() => {
-			controller.abort();
-			resolve(TIMED_OUT);
-		}, CHECK_TIMEOUT_MS);
-	});
-
 	try {
-		// The native stack may ignore the abort signal: race a timer as well.
-		const response = await Promise.race([createLycheeHttp(url, deps).get("Version", controller.signal), timeout]);
+		const response = await withTimeout((signal) => createLycheeHttp(url, deps).get("Version", signal), CHECK_TIMEOUT_MS);
 		if (response === TIMED_OUT) {
 			return { kind: "unreachable" };
 		}
@@ -52,8 +42,6 @@ export async function checkServer(input: string, deps: LycheeHttpDeps = nativeDe
 		return version === undefined ? { kind: "not_lychee" } : { kind: "ok", url, version };
 	} catch (error) {
 		return { kind: classifyFailure(error) };
-	} finally {
-		clearTimeout(timer);
 	}
 }
 
@@ -61,14 +49,6 @@ export async function checkServer(input: string, deps: LycheeHttpDeps = nativeDe
 function isAllowedScheme(url: string): boolean {
 	const { protocol, hostname } = new URL(url);
 	return protocol === "https:" || isLocalNetworkHost(hostname);
-}
-
-async function readJson(response: Response): Promise<unknown> {
-	try {
-		return await response.json();
-	} catch {
-		return undefined;
-	}
 }
 
 /**
