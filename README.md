@@ -17,9 +17,17 @@ Requirements: Node.js 24+, plus Xcode (macOS) for iOS and JDK 21 + the Android S
 ```sh
 npm install
 npx vp dev                 # run in the browser
-npx vp run build && npx cap sync
-npm run open:android       # or: npm run open:ios
+npm run android            # build, install and launch on a connected phone/emulator
+npm run android:live       # same, with live reload (edits in src/ appear instantly)
+npm run ios                # / npm run ios:live for the iOS simulator
+npm run open:android       # or: npm run open:ios, to work in the native IDEs
 ```
+
+`android:live` reaches the dev server through `adb reverse`, so it works over USB or wireless debugging. For a physical iPhone, or Android without adb, add `-- --external` (phone and computer on the same Wi-Fi). Pass `-- --target <device id>` to skip the device prompt. Run `npm run android` (or `ios`) afterwards to install a normal build again.
+
+**Xcode 27:** `npm run ios` and `ios:live` fail after installing the app, because native-run 2.0.3 still opens Simulator.app, which Xcode 27 replaced with Device Hub ([capacitor#8620](https://github.com/ionic-team/capacitor/issues/8620), fixed by [native-run#408](https://github.com/ionic-team/native-run/pull/408), not yet released). Until a Capacitor CLI release includes the fix, run iOS from Xcode: `npm run build && npx cap sync ios && npm run open:ios`, then Run.
+
+Android builds need `JAVA_HOME` pointing at JDK 21 and the Android SDK's `platform-tools` on `PATH`.
 
 ## Checks
 

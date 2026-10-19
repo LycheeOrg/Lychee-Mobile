@@ -1,0 +1,4 @@
+{
+    "message": "Content type unacceptable. Content type \"json\" required",
+    "exception": "UnexpectedContentType"
+}
