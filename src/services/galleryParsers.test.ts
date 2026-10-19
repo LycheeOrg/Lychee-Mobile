@@ -55,7 +55,7 @@ describe("parseRootAlbums (FR-003-01, DO-003-03)", () => {
 	it("is empty when every section is empty", () => {
 		const empty = { ...albums, smart_albums: [], tag_albums: [], albums: [], shared_albums: [] };
 
-		expect(parseRootAlbums(empty)).toEqual({ sections: [] });
+		expect(parseRootAlbums(empty)).toEqual({ sections: [], canUpload: false });
 	});
 
 	it("skips malformed tiles", () => {
@@ -77,6 +77,7 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			kind: "album",
 			hasSubAlbums: true,
 			nsfwWarning: false,
+			canUpload: false,
 		});
 	});
 
@@ -87,7 +88,14 @@ describe("parseAlbumHead (DO-003-04)", () => {
 	});
 
 	it("reads a smart album", () => {
-		expect(parseAlbumHead(albumHeadSmart)).toEqual({ id: "recent", title: "Recent", kind: "smart", hasSubAlbums: false, nsfwWarning: false });
+		expect(parseAlbumHead(albumHeadSmart)).toEqual({
+			id: "recent",
+			title: "Recent",
+			kind: "smart",
+			hasSubAlbums: false,
+			nsfwWarning: false,
+			canUpload: false,
+		});
 	});
 
 	it.each([
@@ -198,5 +206,22 @@ describe("parseGallerySettings (DO-003-07)", () => {
 
 	it("rejects a payload without the flags", () => {
 		expect(parseGallerySettings({})).toBeUndefined();
+	});
+});
+
+describe("upload rights (FR-005-02)", () => {
+	it("reads the root's upload right", () => {
+		expect(parseRootAlbums(albums)?.canUpload).toBe(false);
+		expect(parseRootAlbums({ ...albums, rights: { ...albums.rights, can_upload: true } })?.canUpload).toBe(true);
+	});
+
+	it("reads an album's upload right", () => {
+		expect(parseAlbumHead(albumHead)?.canUpload).toBe(false);
+		const writable = { ...albumHead, resource: { ...albumHead.resource, rights: { ...albumHead.resource.rights, can_upload: true } } };
+		expect(parseAlbumHead(writable)?.canUpload).toBe(true);
+	});
+
+	it("treats missing rights as no upload", () => {
+		expect(parseRootAlbums({ ...albums, rights: undefined })?.canUpload).toBe(false);
 	});
 });

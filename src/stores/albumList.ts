@@ -23,6 +23,7 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		failure: null as GalleryFailure | null,
 		sessionEnded: false,
 		sections: [] as AlbumSection[],
+		canUpload: false,
 		unlocking: false,
 		unlockFailure: null as UnlockFailure | null,
 	});
@@ -38,6 +39,7 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		display.settings = settings.kind === "ok" ? settings.value : { ...DEFAULT_SETTINGS };
 		if (root.kind === "ok") {
 			state.sections = root.value.sections;
+			state.canUpload = root.value.canUpload;
 			state.status = "ready";
 			return;
 		}

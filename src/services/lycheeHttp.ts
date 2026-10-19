@@ -25,6 +25,8 @@ export type LycheeHttp = {
 	get: (path: string, signal?: AbortSignal, query?: QueryParams) => Promise<Response>;
 	/** `POST {server}/api/v2/{path}` with `body` as JSON. */
 	post: (path: string, body: unknown, signal?: AbortSignal) => Promise<Response>;
+	/** `POST {server}/api/v2/{path}` as multipart; the native layer sets the boundary (API-005-02). */
+	postForm: (path: string, form: FormData, signal?: AbortSignal) => Promise<Response>;
 	/** Drops the server's cookies; the next call starts a new session. */
 	clearCookies: () => Promise<void>;
 };
@@ -59,8 +61,12 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 		hasSession = true;
 	}
 
-	async function apiHeaders(): Promise<Headers> {
-		const headers = new Headers({ Accept: "application/json", "Content-Type": "application/json" });
+	/** Multipart bodies get no `Content-Type` here: CapacitorHttp sets it with the boundary. */
+	async function apiHeaders(multipart: boolean): Promise<Headers> {
+		const headers = new Headers({ Accept: "application/json" });
+		if (!multipart) {
+			headers.set("Content-Type", "application/json");
+		}
 		const token = (await deps.readCookies(baseUrl))[XSRF_COOKIE];
 		if (token !== undefined && token !== "") {
 			headers.set("X-XSRF-TOKEN", decodeURIComponent(token));
@@ -70,7 +76,7 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 
 	async function send(method: "GET" | "POST", url: string, init: RequestInit): Promise<Response> {
 		await startSession(init.signal ?? undefined);
-		return deps.fetch(url, { ...init, method, headers: await apiHeaders() });
+		return deps.fetch(url, { ...init, method, headers: await apiHeaders(init.body instanceof FormData) });
 	}
 
 	async function request(method: "GET" | "POST", path: string, init: RequestInit, query?: QueryParams): Promise<Response> {
@@ -86,6 +92,7 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 	return {
 		get: (path, signal, query) => request("GET", path, { signal }, query),
 		post: (path, body, signal) => request("POST", path, { body: JSON.stringify(body), signal }),
+		postForm: (path, form, signal) => request("POST", path, { body: form, signal }),
 		async clearCookies() {
 			await deps.clearCookies(baseUrl);
 			hasSession = false;

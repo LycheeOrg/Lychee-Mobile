@@ -39,7 +39,7 @@ describe("album list load (FR-003-01)", () => {
 	it("loads the sections and the gallery settings (S-003-01)", async () => {
 		const display = createSensitiveDisplay();
 		const list = createAlbumList(display);
-		const gallery = fakeGallery({ root: [ok({ sections: SECTIONS })], settings: [ok(SHOWN)] });
+		const gallery = fakeGallery({ root: [ok({ sections: SECTIONS, canUpload: false })], settings: [ok(SHOWN)] });
 
 		await list.load(context(gallery), "7.11.1");
 
@@ -50,7 +50,7 @@ describe("album list load (FR-003-01)", () => {
 
 	it("is loading while the calls run", async () => {
 		const list = createAlbumList();
-		const pending = list.load(context(fakeGallery({ root: [ok({ sections: [] })] })), null);
+		const pending = list.load(context(fakeGallery({ root: [ok({ sections: [], canUpload: false })] })), null);
 
 		expect(list.state.status).toBe("loading");
 		await pending;
@@ -62,7 +62,7 @@ describe("album list load (FR-003-01)", () => {
 		display.settings = HIDDEN;
 		const list = createAlbumList(display);
 
-		await list.load(context(fakeGallery({ root: [ok({ sections: SECTIONS })] })), null);
+		await list.load(context(fakeGallery({ root: [ok({ sections: SECTIONS, canUpload: false })] })), null);
 
 		expect(display.settings).toEqual(SHOWN);
 	});
@@ -117,7 +117,7 @@ describe("album list load (FR-003-01)", () => {
 describe("album list unlock (FR-003-05, NFR-003-05)", () => {
 	it("unlocks the gallery and loads it", async () => {
 		const list = createAlbumList();
-		const gallery = fakeGallery({ root: [{ kind: "gallery_locked" }, ok({ sections: SECTIONS })], unlock: [{ kind: "ok" }] });
+		const gallery = fakeGallery({ root: [{ kind: "gallery_locked" }, ok({ sections: SECTIONS, canUpload: false })], unlock: [{ kind: "ok" }] });
 		const ctx = context(gallery);
 		await list.load(ctx, null);
 
@@ -145,7 +145,7 @@ describe("sensitive albums (FR-003-09, S-003-15)", () => {
 	it("hides sensitive albums when the server says so, until revealed", async () => {
 		const display = createSensitiveDisplay();
 		const list = createAlbumList(display);
-		await list.load(context(fakeGallery({ root: [ok({ sections: SECTIONS })], settings: [ok(HIDDEN)] })), null);
+		await list.load(context(fakeGallery({ root: [ok({ sections: SECTIONS, canUpload: false })], settings: [ok(HIDDEN)] })), null);
 
 		expect(list.view().hiddenCount).toBe(2);
 
@@ -154,5 +154,15 @@ describe("sensitive albums (FR-003-09, S-003-15)", () => {
 		expect(display.revealed).toBe(true);
 		expect(list.view().hiddenCount).toBe(0);
 		expect(list.view().sections).toEqual(SECTIONS);
+	});
+});
+
+describe("upload right (FR-005-02)", () => {
+	it("exposes the root's upload right", async () => {
+		const list = createAlbumList(createSensitiveDisplay());
+
+		await list.load(context(fakeGallery({ root: [ok({ sections: SECTIONS, canUpload: true })] })), null);
+
+		expect(list.state.canUpload).toBe(true);
 	});
 });

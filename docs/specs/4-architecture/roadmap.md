@@ -13,12 +13,12 @@ Candidate features for the proof of concept (each starts with a spec under `feat
 
 | Feature ID | Name | Notes |
 |------------|------|-------|
-| 005 | Photo upload | Pick from the device library and upload into an album. |
 
 ## Completed Features
 
 | Feature ID | Name | Completed | Notes |
 |------------|------|-----------|-------|
+| 005 | Photo upload | 2026-10-19 | Upload into albums with `can_upload` and Unsorted; chunked `POST /api/v2/Photo` (≤ 4 MiB; range reads on iOS, stream on Android); foreground queue with progress sheet. Originals with GPS (ADR-005-01): iOS through `@capawesome/capacitor-file-picker` 8.1.0, Android through the app's own `OriginalMediaPlugin` (picker location request, `setRequireOriginal` copy, location check with "Uploaded without GPS data" notice). 357 Vitest tests; verified by the owner on the Pixel 11 Pro (Android 17) and an iPhone. See `features/005-photo-upload/`. |
 | 004 | Photo viewer | 2026-10-19 | Full-screen modal over the album page with Swiper 14.3.0 Zoom + Virtual (ADR-004-01), medium/medium2x with the original past 1.5×, videos, press-and-hold live photos, paging into further album pages. 277 Vitest tests; verified by the owner on the Pixel 11 Pro and an iPhone. See `features/004-photo-viewer/`. |
 | 003 | Album browsing | 2026-10-19 | Album list as start page, settings page, sub-albums and infinite photo grid through the v2 API (ADR-003-01), `<img>` thumbnails with Android mixed content for LAN servers (ADR-003-02), album and gallery unlock, NSFW hide/blur/warn, 419 retry. 245 Vitest tests; verified by the owner on the Pixel 11 Pro and an iPhone. See `features/003-album-browsing/`. |
 | 002 | Login | 2026-10-19 | Username/password sign-in with `remember_me`; stays signed in through Lychee's cookies, no stored password or token (ADR-002-01); account line with Sign out; Continue as guest; note for OAuth/passkey servers. 126 Vitest tests; verified by the owner on the Pixel 11 Pro and an iPhone. See `features/002-login/`. |

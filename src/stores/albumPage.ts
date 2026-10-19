@@ -5,7 +5,7 @@
 
 import { reactive, readonly } from "vue";
 import type { GalleryFailure, GalleryResult, UnlockFailure } from "@/services/gallery";
-import type { AlbumHead, AlbumTile, Page, PhotoTile } from "@/services/galleryParsers";
+import type { AlbumHead, AlbumKind, AlbumTile, Page, PhotoTile } from "@/services/galleryParsers";
 import type { GalleryContext } from "@/stores/galleryContext";
 
 export type AlbumPageStatus = "loading" | "ready" | "password" | "sensitive" | "sign_in" | "failed";
@@ -24,6 +24,8 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		failure: null as GalleryFailure | null,
 		sessionEnded: false,
 		title: "",
+		kind: "album" as AlbumKind,
+		canUpload: false,
 		albums: [] as AlbumTile[],
 		photos: [] as PhotoTile[],
 		photoTotal: 0,
@@ -59,6 +61,8 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 
 	function start(head: AlbumHead): void {
 		state.title = head.title;
+		state.kind = head.kind;
+		state.canUpload = head.canUpload;
 		state.nextAlbumsPage = head.hasSubAlbums ? 1 : null;
 		state.nextPhotosPage = 1;
 		updateHasMore();

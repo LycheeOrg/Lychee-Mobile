@@ -224,3 +224,15 @@ describe("photo total (DO-004-02, FR-004-07)", () => {
 		expect(album.state.photoTotal).toBe(250);
 	});
 });
+
+describe("upload right (FR-005-02)", () => {
+	it("exposes the album's kind and upload right", async () => {
+		const gallery = fakeGallery({ head: [ok(head({ kind: "smart", canUpload: true }))], photos: [ok(page([], 1, 1))] });
+		const album = createAlbumPage("unsorted", new Set());
+
+		await album.load(context(gallery));
+
+		expect(album.state.kind).toBe("smart");
+		expect(album.state.canUpload).toBe(true);
+	});
+});

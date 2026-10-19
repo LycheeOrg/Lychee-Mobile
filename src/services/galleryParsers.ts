@@ -25,11 +25,11 @@ export type PhotoTile = { id: string; title: string; kind: PhotoKind; thumb: Thu
 /** DO-003-03. */
 export type SectionKey = "pinned" | "smart" | "albums" | "shared" | "tags" | "people";
 export type AlbumSection = { key: SectionKey; albums: AlbumTile[] };
-export type RootAlbums = { sections: AlbumSection[] };
+export type RootAlbums = { sections: AlbumSection[]; canUpload: boolean };
 
 /** DO-003-04. */
 export type AlbumKind = "album" | "smart" | "tag" | "person";
-export type AlbumHead = { id: string; title: string; kind: AlbumKind; hasSubAlbums: boolean; nsfwWarning: boolean };
+export type AlbumHead = { id: string; title: string; kind: AlbumKind; hasSubAlbums: boolean; nsfwWarning: boolean; canUpload: boolean };
 
 /** DO-003-05, DO-004-02. */
 export type Page<T> = { items: T[]; page: number; lastPage: number; total: number };
@@ -58,7 +58,7 @@ export function parseRootAlbums(payload: unknown): RootAlbums | undefined {
 	const sections = SECTIONS.map(([key, field]) => ({ key, albums: tilesOf(payload[field], parseAlbumTile) })).filter(
 		(section) => section.albums.length > 0,
 	);
-	return { sections };
+	return { sections, canUpload: canUploadOf(payload.rights) };
 }
 
 export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
@@ -76,6 +76,7 @@ export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
 		kind,
 		hasSubAlbums: kind === "album" && typeof resource.num_children === "number" && resource.num_children > 0,
 		nsfwWarning: config.is_nsfw_warning_visible === true,
+		canUpload: canUploadOf(resource.rights),
 	};
 }
 
@@ -180,6 +181,11 @@ function pageOf<T>(payload: unknown, field: string, parse: (item: unknown) => T 
 /** Parses each item, dropping malformed ones. */
 function tilesOf<T>(items: unknown, parse: (item: unknown) => T | undefined): T[] {
 	return Array.isArray(items) ? items.map(parse).filter((item): item is T => item !== undefined) : [];
+}
+
+/** FR-005-02: `rights.can_upload`, false when missing. */
+function canUploadOf(rights: unknown): boolean {
+	return isObject(rights) && rights.can_upload === true;
 }
 
 function isObject(value: unknown): value is Json {
