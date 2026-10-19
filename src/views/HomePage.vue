@@ -7,6 +7,11 @@
 		</IonHeader>
 
 		<IonContent :fullscreen="true" class="ion-padding">
+			<div v-if="state.launchFailure !== null && state.saved !== null" class="launch-banner" role="alert">
+				<p>{{ hostOf(state.saved.url) }}: {{ failureMessage(state.launchFailure) }}</p>
+				<IonButton size="small" fill="outline" color="warning" :disabled="retrying" @click="retry">Retry</IonButton>
+			</div>
+
 			<p>Connect to your Lychee server.</p>
 			<IonList>
 				<IonItem>
@@ -18,43 +23,85 @@
 						inputmode="url"
 						autocapitalize="off"
 						placeholder="photos.example.com"
-						:error-text="errorText"
-						:class="{ 'ion-invalid ion-touched': errorText !== undefined }"
+						:readonly="state.status === 'checking'"
+						@keyup.enter="connect"
 					/>
 				</IonItem>
 			</IonList>
-			<IonButton expand="block" @click="save">Save</IonButton>
-			<p v-if="savedUrl !== null">Server: {{ savedUrl }}</p>
+
+			<p v-if="state.status === 'failed' && state.failure !== null" class="message failure">{{ failureMessage(state.failure) }}</p>
+			<p v-else-if="state.status === 'connected' && state.saved !== null" class="message connected">
+				✓ {{ connectedMessage(state.saved.version) }}
+			</p>
+
+			<IonButton expand="block" :disabled="state.status === 'checking'" @click="connect">
+				<IonSpinner v-if="state.status === 'checking'" name="crescent" />
+				<span v-else>Connect</span>
+			</IonButton>
 		</IonContent>
 	</IonPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonPage, IonTitle, IonToolbar } from "@ionic/vue";
-import { Preferences } from "@capacitor/preferences";
-import { normalizeServerUrl } from "@/utils/serverUrl";
+import { IonButton, IonContent, IonHeader, IonInput, IonItem, IonList, IonPage, IonSpinner, IonTitle, IonToolbar } from "@ionic/vue";
+import { serverStore } from "@/stores/server";
+import { connectedMessage, failureMessage } from "@/utils/serverMessages";
 
-const SERVER_URL_KEY = "server_url";
-
+const { state } = serverStore;
 const serverInput = ref("");
-const savedUrl = ref<string | null>(null);
-const errorText = ref<string | undefined>(undefined);
+const retrying = ref(false);
 
 onMounted(async () => {
-	savedUrl.value = (await Preferences.get({ key: SERVER_URL_KEY })).value;
-	serverInput.value = savedUrl.value ?? "";
+	await serverStore.load();
+	serverInput.value = state.saved?.url ?? "";
 });
 
-async function save(): Promise<void> {
-	const url = normalizeServerUrl(serverInput.value);
-	errorText.value = url === null ? "Enter an http or https address." : undefined;
-	if (url === null) {
-		return;
+async function connect(): Promise<void> {
+	await serverStore.connect(serverInput.value);
+	if (state.status === "connected" && state.saved !== null) {
+		serverInput.value = state.saved.url;
 	}
+}
 
-	await Preferences.set({ key: SERVER_URL_KEY, value: url });
-	savedUrl.value = url;
-	serverInput.value = url;
+async function retry(): Promise<void> {
+	retrying.value = true;
+	await serverStore.launchCheck();
+	retrying.value = false;
+}
+
+function hostOf(url: string): string {
+	return new URL(url).host;
 }
 </script>
+
+<style scoped>
+.launch-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: rgba(var(--ion-color-warning-rgb), 0.15);
+	color: var(--ion-color-warning-shade);
+}
+
+.launch-banner p {
+	margin: 0;
+}
+
+.message {
+	margin: 8px 4px 16px;
+	font-size: 0.9rem;
+}
+
+.failure {
+	color: var(--ion-color-danger);
+}
+
+.connected {
+	color: var(--ion-color-success);
+}
+</style>
