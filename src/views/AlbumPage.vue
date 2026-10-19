@@ -49,10 +49,23 @@
 					<span>{{ hiddenSensitiveMessage(subAlbums.hiddenCount) }}</span>
 					<IonButton size="small" fill="outline" @click="sensitiveDisplay.revealed = true">Show</IonButton>
 				</div>
-				<PhotoGrid :photos="state.photos" />
+				<PhotoGrid :photos="state.photos" @open="openViewer" />
 				<GalleryMessage v-if="state.albums.length === 0 && state.photos.length === 0 && !state.hasMore" :text="EMPTY_ALBUM" />
 				<GalleryMessage v-if="state.moreFailed" :text="LOAD_MORE_FAILED" action-label="Retry" @action="more" />
 			</template>
+
+			<IonModal :is-open="viewerStart !== null" class="photo-viewer-modal" @did-dismiss="viewerClosed">
+				<PhotoViewer
+					v-if="viewerStart !== null"
+					:photos="state.photos"
+					:start-index="viewerStart"
+					:total="state.photoTotal"
+					:has-more="state.hasMore"
+					:load-more="more"
+					@index="viewerIndex = $event"
+					@close="viewerStart = null"
+				/>
+			</IonModal>
 
 			<IonInfiniteScroll :disabled="state.status !== 'ready' || !state.hasMore || state.moreFailed" @ion-infinite="infinite">
 				<IonInfiniteScrollContent />
@@ -62,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useRoute } from "vue-router";
 import {
 	IonBackButton,
@@ -72,6 +85,7 @@ import {
 	IonHeader,
 	IonInfiniteScroll,
 	IonInfiniteScrollContent,
+	IonModal,
 	IonPage,
 	IonRefresher,
 	IonRefresherContent,
@@ -87,6 +101,7 @@ import AlbumTileGrid from "@/components/AlbumTileGrid.vue";
 import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import PhotoGrid from "@/components/PhotoGrid.vue";
+import PhotoViewer from "@/components/PhotoViewer.vue";
 import { createAlbumPage } from "@/stores/albumPage";
 import { currentGalleryContext } from "@/stores/galleryContext";
 import { sensitiveDisplay, showsSensitive, visibleAlbums } from "@/stores/sensitive";
@@ -108,6 +123,9 @@ const state = album.state;
 const subAlbums = computed(() => visibleAlbums([...state.albums], showsSensitive(sensitiveDisplay)));
 const retryable = computed(() => state.failure === "unreachable" || state.failure === "failed");
 let loaded = false;
+// FR-004-01: the photo the viewer opened on, and the one it last showed.
+const viewerStart = ref<number | null>(null);
+const viewerIndex = ref(0);
 
 // Loaded on first entry; Back keeps the page and its scroll position (FR-003-02).
 onIonViewWillEnter(async () => {
@@ -152,6 +170,21 @@ async function continueSensitive(): Promise<void> {
 	const ctx = currentGalleryContext();
 	if (ctx !== null) {
 		await album.continueSensitive(ctx);
+	}
+}
+
+function openViewer(index: number): void {
+	viewerIndex.value = index;
+	viewerStart.value = index;
+}
+
+// Closed by its button or Android's back button: show the last viewed photo in the grid.
+async function viewerClosed(): Promise<void> {
+	viewerStart.value = null;
+	const photo = state.photos[viewerIndex.value];
+	await nextTick();
+	if (photo !== undefined) {
+		document.querySelector(`[data-photo-id="${CSS.escape(photo.id)}"]`)?.scrollIntoView({ block: "center" });
 	}
 }
 

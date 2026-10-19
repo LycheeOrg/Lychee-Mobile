@@ -1,10 +1,17 @@
 <template>
 	<div class="photo-grid">
-		<div v-for="photo in photos" :key="photo.id" class="photo-tile">
+		<button
+			v-for="(photo, index) in photos"
+			:key="photo.id"
+			type="button"
+			class="photo-tile"
+			:data-photo-id="photo.id"
+			@click="emit('open', index)"
+		>
 			<ThumbImage :thumb="photo.thumb" :alt="photo.title" />
 			<span v-if="photo.kind === 'video'" class="badge" aria-label="Video"><IonIcon :icon="play" /></span>
 			<span v-else-if="photo.kind === 'live'" class="badge" aria-label="Live photo"><IonIcon :icon="radioButtonOn" /></span>
-		</div>
+		</button>
 	</div>
 </template>
 
@@ -14,8 +21,9 @@ import { play, radioButtonOn } from "ionicons/icons";
 import ThumbImage from "@/components/ThumbImage.vue";
 import type { PhotoTile } from "@/services/galleryParsers";
 
-// FR-003-02, FR-003-03: square thumbnails; display-only until the viewer (Feature 004).
+// FR-003-02, FR-003-03: square thumbnails; FR-004-01: a tap opens the viewer.
 defineProps<{ photos: readonly PhotoTile[] }>();
+const emit = defineEmits<{ open: [index: number] }>();
 </script>
 
 <style scoped>
@@ -41,6 +49,9 @@ defineProps<{ photos: readonly PhotoTile[] }>();
 	position: relative;
 	aspect-ratio: 1;
 	overflow: hidden;
+	padding: 0;
+	border: 0;
+	background: none;
 }
 
 .badge {

@@ -14,15 +14,16 @@ export function albumTile(id: string, overrides: Partial<AlbumTile> = {}): Album
 }
 
 export function photoTile(id: string): PhotoTile {
-	return { id, title: id, kind: "photo", thumb: null };
+	const none = { medium2x: null, medium: null, original: null, small2x: null, small: null, thumb2x: null, thumb: null };
+	return { id, title: id, kind: "photo", thumb: null, variants: none, liveUrl: null };
 }
 
 export function head(overrides: Partial<AlbumHead> = {}): AlbumHead {
 	return { id: "a1", title: "Holidays", kind: "album", hasSubAlbums: false, nsfwWarning: false, ...overrides };
 }
 
-export function page<T>(items: T[], current: number, last: number): Page<T> {
-	return { items, page: current, lastPage: last };
+export function page<T>(items: T[], current: number, last: number, total = items.length): Page<T> {
+	return { items, page: current, lastPage: last, total };
 }
 
 /** A gallery whose calls answer from queues; an empty queue answers `failed`. */

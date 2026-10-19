@@ -15,9 +15,12 @@ export type Thumb = { src: string; src2x: string | null };
 /** DO-003-01. */
 export type AlbumTile = { id: string; title: string; thumb: Thumb | null; photoCount: number | null; isLocked: boolean; isNsfw: boolean };
 
-/** DO-003-02. */
+/** DO-003-02, DO-004-01. */
 export type PhotoKind = "photo" | "video" | "live" | "raw";
-export type PhotoTile = { id: string; title: string; kind: PhotoKind; thumb: Thumb | null };
+export type Variant = { url: string; width: number; height: number };
+export type VariantName = "medium2x" | "medium" | "original" | "small2x" | "small" | "thumb2x" | "thumb";
+export type Variants = Record<VariantName, Variant | null>;
+export type PhotoTile = { id: string; title: string; kind: PhotoKind; thumb: Thumb | null; variants: Variants; liveUrl: string | null };
 
 /** DO-003-03. */
 export type SectionKey = "pinned" | "smart" | "albums" | "shared" | "tags" | "people";
@@ -28,8 +31,8 @@ export type RootAlbums = { sections: AlbumSection[] };
 export type AlbumKind = "album" | "smart" | "tag" | "person";
 export type AlbumHead = { id: string; title: string; kind: AlbumKind; hasSubAlbums: boolean; nsfwWarning: boolean };
 
-/** DO-003-05. */
-export type Page<T> = { items: T[]; page: number; lastPage: number };
+/** DO-003-05, DO-004-02. */
+export type Page<T> = { items: T[]; page: number; lastPage: number; total: number };
 
 /** DO-003-07. */
 export type GallerySettings = { nsfwVisible: boolean; nsfwBlurred: boolean };
@@ -37,6 +40,8 @@ export type GallerySettings = { nsfwVisible: boolean; nsfwBlurred: boolean };
 type Json = Record<string, unknown>;
 
 /** Display order of the root sections (FR-003-01) and their fields. */
+const VARIANT_NAMES: VariantName[] = ["medium2x", "medium", "original", "small2x", "small", "thumb2x", "thumb"];
+
 const SECTIONS: [SectionKey, string][] = [
 	["pinned", "pinned_albums"],
 	["smart", "smart_albums"],
@@ -115,6 +120,8 @@ function parsePhotoTile(payload: unknown): PhotoTile | undefined {
 		title: typeof payload.title === "string" ? payload.title : "",
 		kind: photoKindOf(isObject(payload.precomputed) ? payload.precomputed : {}),
 		thumb: thumbOf(urlOf(variants.thumb), urlOf(variants.thumb2x)),
+		variants: Object.fromEntries(VARIANT_NAMES.map((name) => [name, variantOf(variants[name])])) as Variants,
+		liveUrl: typeof payload.live_photo_url === "string" && payload.live_photo_url !== "" ? payload.live_photo_url : null,
 	};
 }
 
@@ -145,6 +152,15 @@ function thumbOf(src: unknown, src2x: unknown): Thumb | null {
 	return { src, src2x: typeof src2x === "string" && src2x !== "" ? src2x : null };
 }
 
+/** A size variant with a URL; `null` when missing or downgraded (no full-photo access). */
+function variantOf(variant: unknown): Variant | null {
+	if (!isObject(variant) || typeof variant.url !== "string" || variant.url === "") {
+		return null;
+	}
+	const { url, width, height } = variant;
+	return { url, width: typeof width === "number" ? width : 0, height: typeof height === "number" ? height : 0 };
+}
+
 function urlOf(variant: unknown): unknown {
 	return isObject(variant) ? variant.url : undefined;
 }
@@ -153,11 +169,12 @@ function pageOf<T>(payload: unknown, field: string, parse: (item: unknown) => T 
 	if (!isObject(payload) || !Array.isArray(payload[field])) {
 		return undefined;
 	}
-	const { current_page, last_page } = payload;
+	const { current_page, last_page, total } = payload;
 	if (typeof current_page !== "number" || typeof last_page !== "number") {
 		return undefined;
 	}
-	return { items: tilesOf(payload[field], parse), page: current_page, lastPage: last_page };
+	const items = tilesOf(payload[field], parse);
+	return { items, page: current_page, lastPage: last_page, total: typeof total === "number" ? total : items.length };
 }
 
 /** Parses each item, dropping malformed ones. */
