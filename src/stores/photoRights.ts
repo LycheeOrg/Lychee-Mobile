@@ -17,3 +17,11 @@ export function photoActionsFor(album: { id: string; kind: AlbumKind; canDownloa
 	const deletable = album.kind === "album" || (album.kind === "smart" && album.id === "unsorted");
 	return { download: album.canDownload, delete: album.canDelete && deletable };
 }
+
+/**
+ * FR-007-01, FR-007-02: selection is offered whatever the rights (owner,
+ * 2026-10-20); each button is enabled only when allowed and something is selected.
+ */
+export function enabledActions(actions: PhotoActions, selected: number): PhotoActions {
+	return { download: actions.download && selected > 0, delete: actions.delete && selected > 0 };
+}

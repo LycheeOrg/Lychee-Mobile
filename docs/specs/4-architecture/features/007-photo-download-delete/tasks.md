@@ -1,6 +1,6 @@
 # Feature 007 Tasks – Photo Download and Delete
 
-_Status: Ready_  
+_Status: Testing_  
 _Last updated: 2026-10-20_
 
 > Keep this checklist aligned with the feature plan increments. Stage tests before implementation, record verification commands beside each task, and prefer bite-sized entries (≤90 minutes).
@@ -66,14 +66,18 @@ _Last updated: 2026-10-20_
 - [x] T-007-18 – `AlbumPage`: Select button and selection toolbar (Cancel, "N selected"), bottom toolbar with Download/Delete per `photoActionsFor()`, delete alert and spinner, download bar with Retry failed, Android back and pull to refresh clear the selection, timeout reload (FR-007-01 … 05, UI-007-01 … 05).  
   _Verification commands:_ `npx vp test`, `npx vp check`, `npx vp run typecheck`, `npx vp run build`, `npx cap sync`  
 
+### I8b – Selection whatever the rights (owner, 2026-10-20)
+- [x] T-007-22 – Failing `photoRights.test.ts` cases for `enabledActions()`, then `AlbumPage`: Select and long-press whenever photos show; Download and Delete always visible in selection mode, disabled without their right or with nothing selected (FR-007-01, FR-007-02, S-007-03, S-007-04).  
+  _Verification commands:_ `npx vp test src/stores/photoRights.test.ts` (red, then green), `npx vp test`, `npx vp check`, `npx vp run typecheck`, `npx vp run build`, `npx cap sync`  
+
 ### I9 – Device checks
 - [ ] T-007-19 – Android 9 (API 28) and Android 10 (API 29) emulators: permission prompt on 9, saving into `Pictures/Lychee` and `Movies/Lychee` on both (S-007-14).  
   _Verification commands:_ `npm run android` on each emulator  
-- [ ] T-007-20 – Pixel 11 Pro and iPhone: S-007-01 … 13, 15 … 18, including a > 500 MB video, airplane mode mid-run, a denied library permission, delete in a regular album and in Unsorted, no Delete in Recent, and uninstalling the app on the Pixel (S-007-17).  
+- [ ] T-007-20 – (Long-press selection confirmed by the owner on Android, 2026-10-20; the rest open.) Pixel 11 Pro and iPhone: S-007-01 … 13, 15 … 18, including a > 500 MB video, airplane mode mid-run, a denied library permission, delete in a regular album and in Unsorted, no Delete in Recent, and uninstalling the app on the Pixel (S-007-17).  
   _Verification commands:_ `npm run android`, `npm run ios`  
 
 ### I10 – Docs and drift gate
-- [ ] T-007-21 – Knowledge map (selection store, photo actions, download service and run, library saver, `saveToGallery`, three plugins, `DELETE Photo` and `Zip`, new permissions); roadmap row; drift gate report in the plan.  
+- [x] T-007-21 – Knowledge map (selection store, photo actions, download service and run, library saver, `saveToGallery`, three plugins, `DELETE Photo` and `Zip`, new permissions); roadmap row; drift gate report in the plan.  
   _Verification commands:_ `npx vp check`, `npx vp run typecheck`, `npx vp test`, `npx vp run build`, `cd android && ./gradlew assembleDebug`  
 
 ## Notes / TODOs

@@ -8,7 +8,7 @@ _Last updated:_ 2026-10-20
 > Guardrail: Keep this plan traceable back to the governing spec. Reference FR/NFR/Scenario IDs from `spec.md` where relevant, log any new high- or medium-impact questions in the feature's [open-questions.md](open-questions.md), and assume clarifications are resolved only when the spec's normative sections and, where applicable, ADRs under `docs/specs/6-decisions/` have been updated.
 
 ## Vision & Success Criteria
-In an album's grid the user selects photos and either saves them to the phone's photo library or deletes them from Lychee. Success: on the Pixel 11 Pro and an iPhone, a JPEG, a HEIC and a large video download into Photos / Google Photos with the original checksum and GPS; a private album downloads with the session cookie; Android downloads stay after uninstalling the app; deleting in a regular album and in Unsorted removes the photos, and Delete never shows where it would do nothing.
+In an album's grid the user selects photos and either saves them to the phone's photo library or deletes them from Lychee. Success: on the Pixel 11 Pro and an iPhone, a JPEG, a HEIC and a large video download into Photos / Google Photos with the original checksum and GPS; a private album downloads with the session cookie; Android downloads stay after uninstalling the app; deleting in a regular album and in Unsorted removes the photos, and Delete is never enabled where it would do nothing.
 
 ## Scope Alignment
 - **In scope:** FR-007-01 … 06, NFR-007-01 … 06.
@@ -90,3 +90,36 @@ Run 2026-10-20 by the agent.
 - 2026-10-20: T-007-01 … 14 done test-first (485 Vitest tests). Design notes: delete and the download request live on the `Gallery` facade (`deletePhotos`, `downloadRequest`) over new `lycheeHttp.delete/apiUrl/cookieHeader`; selection is owned by the album page store, which clears it on every load. Found while testing: page-number paging would skip photos after a delete, so the next page is recomputed and duplicates dropped (FR-007-03, S-007-19). Found in Lychee's code: converted RAW photos keep the camera MIME in `type` while `ORIGINAL` is a JPEG, so FR-007-06 takes the extension from the original URL first.
 - 2026-10-20: sequencing change: no phone is attached to the agent's machine and the spike needs the owner's server and devices, so T-007-15 (device spike) runs through the real UI as the first step of I9 instead of a dev-only trigger; I8 (UI) goes first. If the spike fails, only the transport changes.
 - 2026-10-20: I8 done: `photoActionMessages`, `PhotoGrid` selection (first component tests in the repo; pointer events dispatched directly because test-utils can't set `clientX` on jsdom events), `DownloadBar`, `AlbumPage` wiring (Select, Cancel, footer, confirmation, Android back via `useBackButton(15)`, alerts only from the visible page). Self-review fix: no empty `Cookie` header for guests. Gate: `npx vp check`, `npx vp run typecheck`, `npx vp test` (36 files, 506 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug`, iOS simulator `xcodebuild` (CI flags) all green. Remaining: T-007-15, 19, 20 on the owner's devices and emulators, then T-007-21 (drift gate).
+- 2026-10-20: owner device report: a long press vibrated but selected nothing. Cause: Android's WebView long press (~400 ms) fires `contextmenu` and then `pointercancel`, which cancelled the 500 ms timer before it fired. Fix test-first: `contextmenu` itself triggers the long press (once, whichever of it and the timer comes first; toggles in selection mode), images can't be dragged. FR-007-01 updated. Lesson: on Android, a press-and-hold gesture must listen to the platform's long press, not only a timer.
+- 2026-10-20: the owner then suspected the account's rights (the user had neither download nor delete on that album, so selection wasn't offered) and had the long-press fix reverted; they asked to always offer selection with disabled buttons instead (`enabledActions()`, T-007-22; FR-007-01, FR-007-02, S-007-03, S-007-04). The problem also showed on photos the user owns, so the owner had the long-press fix restored; both changes stand.
+- 2026-10-20: owner confirmed long-press selection works on Android with both fixes; first round committed by the owner as `99f1143`. Drift gate run; the follow-up fixes are committed by the agent at the owner's request.
+
+## Drift Gate Report
+
+Run 2026-10-20 by the agent, before the device checks were finished.
+
+**Preconditions:** T-007-00 … 14, 16 … 18, 21, 22 `[x]`; T-007-15, 19, 20 open (device checks). `npx vp check`, `npx vp run typecheck`, `npx vp test` (36 files, 513 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green; iOS simulator `xcodebuild` (CI flags) green after the native changes. `package.json` adds exactly the three approved packages, pinned (plus Ionic's transitive `@capacitor/synapse`).
+
+| Requirement | Code | Evidence |
+|-------------|------|----------|
+| FR-007-01 | `photoSelection.ts`, `PhotoGrid.vue` (500 ms timer and Android `contextmenu`), `AlbumPage.vue` (Select, Cancel, Android back, leave) | `photoSelection.test.ts` (6), `PhotoGrid.test.ts` (11), `albumPage.test.ts` (selection cleared on load); long-press confirmed by the owner on Android |
+| FR-007-02 | `photoRights.ts` (`photoActionsFor`, `enabledActions`), rights in `galleryParsers.ts` | `photoRights.test.ts` (12), `galleryParsers.test.ts` (rights, MIME) |
+| FR-007-03 | `lycheeHttp.delete`, `Gallery.deletePhotos`, `albumPage.deleteSelected`, confirmation in `AlbumPage.vue` | `lycheeHttp.test.ts`, `gallery.test.ts` (204/401/403/422/500/network/30 s), `albumPage.test.ts` (recovery, sign-in, keep on failure, reload on timeout, S-007-19) |
+| FR-007-04 | `Gallery.downloadRequest`, `downloadRun.ts`, `downloadDevice.ts`, `DownloadBar.vue` | `downloadRun.test.ts` (14), `downloadDevice.test.ts` (5) |
+| FR-007-05 | `librarySaver.ts`, `OriginalMediaPlugin.saveToGallery` (`storage` alias on API 24–28), iOS usage string | `librarySaver.test.ts` (8); native code untested automatically |
+| FR-007-06 | `download.ts` (`downloadFileOf`, `transferFailure`) | `download.test.ts` (25) |
+| NFR-007-01 | file-transfer to the cache, native save | design; large-video check open (T-007-20) |
+| NFR-007-02 | `ORIGINAL`, unchanged bytes | checksum check open (T-007-15) |
+| NFR-007-03 | `package.json` | diff |
+| NFR-007-04 | injected deps throughout | Vitest |
+| NFR-007-05 | `deleteConfirmTitle`, `DELETE_CONFIRM_TEXT`, alert | `photoActionMessages.test.ts` (13) |
+| NFR-007-06 | `cookieHeader()`, `Cookie` header (omitted when empty) | `lycheeHttp.test.ts`, `gallery.test.ts`; private-album check open (T-007-15) |
+
+**Not verified yet:** T-007-15 (private-album cookie and iOS checksum), T-007-19 (Android 9/10 emulators), T-007-20 (remaining Pixel and iPhone scenarios, incl. large video, airplane mode, permission denied, delete in Unsorted, uninstall). The feature stays in Testing until the owner reports them.
+
+**Divergences (all recorded above and in the spec):** delete and the download request moved onto the `Gallery` facade instead of a separate `photoActions` service; FR-007-06 takes the extension from the original URL first (RAW photos); next-page recomputation after a delete (S-007-19); the device spike moved into I9; Android long press through `contextmenu`; selection offered whatever the rights with disabled buttons (owner).
+
+**Lessons:**
+- Android's WebView long press cancels the pointer at about 400 ms; press-and-hold must also listen to `contextmenu`.
+- Hidden actions look like a broken gesture; checking the account's rights first would have separated the two causes sooner.
+- Page-number paging and local deletes interact; any feature that removes items from a paged list must recompute the next page.

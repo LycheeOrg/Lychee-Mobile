@@ -97,11 +97,11 @@
 				<div class="actions">
 					<IonSpinner v-if="state.deleting" />
 					<template v-else>
-						<IonButton v-if="actions.download" fill="clear" :disabled="selection.count() === 0" @click="download">
+						<IonButton fill="clear" :disabled="!enabled.download" @click="download">
 							<IonIcon slot="start" :icon="downloadOutline" />
 							Download
 						</IonButton>
-						<IonButton v-if="actions.delete" fill="clear" color="danger" :disabled="selection.count() === 0" @click="confirmDelete">
+						<IonButton fill="clear" color="danger" :disabled="!enabled.delete" @click="confirmDelete">
 							<IonIcon slot="start" :icon="trashOutline" />
 							Delete
 						</IonButton>
@@ -152,7 +152,7 @@ import UploadButton from "@/components/UploadButton.vue";
 import type { PhotoTile } from "@/services/galleryParsers";
 import { createAlbumPage } from "@/stores/albumPage";
 import { downloadRun } from "@/stores/downloadRun";
-import { photoActionsFor } from "@/stores/photoRights";
+import { enabledActions, photoActionsFor } from "@/stores/photoRights";
 import { currentGalleryContext } from "@/stores/galleryContext";
 import { sensitiveDisplay, showsSensitive, visibleAlbums } from "@/stores/sensitive";
 import { uploadQueue, uploadTargetFor } from "@/stores/uploadQueue";
@@ -179,9 +179,10 @@ let loaded = false;
 // FR-005-02: where this page's Upload button sends files, if anywhere.
 const uploadTarget = computed(() => uploadTargetFor({ id: albumId, kind: state.kind, canUpload: state.canUpload }));
 
-// FR-007-02: the selection actions this album offers.
+// FR-007-01, FR-007-02: selection is offered for any photos; the buttons follow the rights.
 const actions = computed(() => photoActionsFor({ id: albumId, kind: state.kind, canDownload: state.canDownload, canDelete: state.canDelete }));
-const canSelect = computed(() => state.status === "ready" && state.photos.length > 0 && (actions.value.download || actions.value.delete));
+const enabled = computed(() => enabledActions(actions.value, selection.count()));
+const canSelect = computed(() => state.status === "ready" && state.photos.length > 0);
 // Ionic keeps earlier pages alive; only the visible one answers Back and shows alerts.
 let visible = false;
 

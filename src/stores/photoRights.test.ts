@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { photoActionsFor } from "@/stores/photoRights";
+import { enabledActions, photoActionsFor } from "@/stores/photoRights";
 import type { AlbumKind } from "@/services/galleryParsers";
 
 const album = (kind: AlbumKind, id = "a1", canDownload = true, canDelete = true) => ({ id, kind, canDownload, canDelete });
@@ -33,5 +33,20 @@ describe("photoActionsFor (FR-007-02, S-007-03, S-007-04)", () => {
 
 	it("offers nothing without rights", () => {
 		expect(photoActionsFor(album("album", "a1", false, false))).toEqual({ download: false, delete: false });
+	});
+});
+
+describe("enabledActions (FR-007-01, FR-007-02, owner 2026-10-20)", () => {
+	it("enables an allowed action once a photo is selected", () => {
+		expect(enabledActions({ download: true, delete: true }, 1)).toEqual({ download: true, delete: true });
+	});
+
+	it("disables both with nothing selected", () => {
+		expect(enabledActions({ download: true, delete: true }, 0)).toEqual({ download: false, delete: false });
+	});
+
+	it("disables an action the user may not take, whatever is selected (S-007-03)", () => {
+		expect(enabledActions({ download: true, delete: false }, 3)).toEqual({ download: true, delete: false });
+		expect(enabledActions({ download: false, delete: false }, 3)).toEqual({ download: false, delete: false });
 	});
 });
