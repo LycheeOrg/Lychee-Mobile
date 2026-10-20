@@ -1,6 +1,6 @@
 # Feature 008 Tasks – Photo Info Panel
 
-_Status: In progress_  
+_Status: Complete_  
 _Last updated: 2026-10-20_
 
 > Keep this checklist aligned with the feature plan increments. Stage tests before implementation, record verification commands beside each task, and prefer bite-sized entries (≤90 minutes).
@@ -33,7 +33,7 @@ _Last updated: 2026-10-20_
   _Verification commands:_ `npx vp test`, `npx vp check`, `npx vp run typecheck`, `npx vp run build`, `npx cap sync`  
 
 ### I5 – Device checks
-- [ ] T-008-09 – (Android confirmed by the owner, 2026-10-20: half-height sheet expands to full height, map tiles load, tapping the map opens Google Maps, details match Lychee's web panel. Open: iPhone, swiping photos with the sheet at half height.) Pixel 11 Pro and iPhone: S-008-01 … 12; tiles load in the WebView; the sheet doesn't fight the viewer's swipes.  
+- [x] T-008-09 – (Android confirmed by the owner first: half-height sheet expands to full height, map tiles load, tapping the map opens Google Maps, details match Lychee's web panel; the iPhone and swiping with the sheet at half height reported passed, 2026-10-20.) Pixel 11 Pro and iPhone: S-008-01 … 12; tiles load in the WebView; the sheet doesn't fight the viewer's swipes.  
   _Verification commands:_ `npm run android`, `npm run ios`  
 
 ### I6 – Docs and drift gate
