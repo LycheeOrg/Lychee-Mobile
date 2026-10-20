@@ -30,6 +30,7 @@ export function head(overrides: Partial<AlbumHead> = {}): AlbumHead {
 		canDownload: false,
 		canDelete: false,
 		mapAllowed: false,
+		canEdit: false,
 		...overrides,
 	};
 }
@@ -62,6 +63,7 @@ export function fakeGallery(answers: {
 		downloadRequest: vi.fn<Gallery["downloadRequest"]>(async (id, from) => ({ url: `zip/${id}/${from}`, headers: {} })),
 		photoAlbums: vi.fn<Gallery["photoAlbums"]>(async () => failed),
 		mapProvider: vi.fn<Gallery["mapProvider"]>(async () => null),
+		createAlbum: vi.fn<Gallery["createAlbum"]>(async () => failed),
 	} satisfies Gallery;
 }
 

@@ -24,6 +24,7 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		sessionEnded: false,
 		sections: [] as AlbumSection[],
 		canUpload: false,
+		canEdit: false,
 		unlocking: false,
 		unlockFailure: null as UnlockFailure | null,
 	});
@@ -41,6 +42,7 @@ export function createAlbumList(display: SensitiveDisplay = sensitiveDisplay) {
 		if (root.kind === "ok") {
 			state.sections = root.value.sections;
 			state.canUpload = root.value.canUpload;
+			state.canEdit = root.value.canEdit;
 			state.status = "ready";
 			return;
 		}

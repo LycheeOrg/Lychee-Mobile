@@ -428,3 +428,13 @@ describe("map switch (FR-008-05)", () => {
 		expect(album.state.mapAllowed).toBe(true);
 	});
 });
+
+describe("album creation right (FR-010-02)", () => {
+	it("keeps whether sub-albums may be created", async () => {
+		const album = createAlbumPage("a1", new Set());
+
+		await album.load(context(fakeGallery({ head: [ok(head({ canEdit: true }))], photos: [ok(page([photoTile("p1")], 1, 1))] })));
+
+		expect(album.state.canEdit).toBe(true);
+	});
+});

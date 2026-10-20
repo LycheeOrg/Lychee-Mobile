@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 010 (2026-10-20):** the Upload button became Upload photos in the toolbar's "+" menu (`AddButton`); rights and behaviour unchanged (FR-010-01).
+
 > **Amended by Feature 009 (2026-10-20):** Android uploads use the camera's file name from MediaStore when the user grants photo access (FR-009-05, ADR-009-01).
 
 ## Overview
