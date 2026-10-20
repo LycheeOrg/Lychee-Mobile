@@ -227,6 +227,10 @@ describe("createLycheeHttp: delete and download requests (API-007-01, API-007-02
 		expect(d.fetch.mock.calls.filter((call) => call[1]?.method === "DELETE")).toHaveLength(2);
 	});
 
+	it("adds no query mark without parameters", () => {
+		expect(createLycheeHttp(BASE, deps()).apiUrl("Map::provider", {})).toBe(`${BASE}/api/v2/Map::provider`);
+	});
+
 	it("builds an API URL with an encoded query", () => {
 		const http = createLycheeHttp(BASE, deps());
 

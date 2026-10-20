@@ -130,9 +130,6 @@ export async function readJson(response: Response): Promise<unknown> {
 }
 
 function queryString(query: QueryParams | undefined): string {
-	if (query === undefined) {
-		return "";
-	}
-	const params = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
-	return `?${params.toString()}`;
+	const params = new URLSearchParams(Object.entries(query ?? {}).map(([key, value]) => [key, String(value)])).toString();
+	return params === "" ? "" : `?${params}`;
 }

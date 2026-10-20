@@ -19,22 +19,50 @@
 			</IonButton>
 			<span class="title">{{ photos[activeIndex]?.title ?? "" }}</span>
 			<span class="counter">{{ counterText(activeIndex, total, photos.length) }}</span>
+			<IonButton v-if="infoAllowed" fill="clear" color="light" aria-label="Info" @click="openInfo">
+				<IonIcon slot="icon-only" :icon="informationCircleOutline" />
+			</IonButton>
 		</div>
+
+		<IonModal
+			class="photo-info-sheet"
+			:is-open="infoOpen"
+			:breakpoints="[0, 0.5, 1]"
+			:initial-breakpoint="0.5"
+			:backdrop-breakpoint="0.75"
+			@did-dismiss="infoOpen = false"
+		>
+			<IonContent>
+				<PhotoInfoPanel
+					v-if="infoPhoto !== undefined"
+					:photo="infoPhoto"
+					:albums="albums.state.byPhoto[infoPhoto.id]"
+					:map-provider="mapProvider"
+					:map-allowed="mapAllowed"
+					:platform="platform"
+					@open="openExternal"
+				/>
+			</IonContent>
+		</IonModal>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
-import { IonButton, IonIcon } from "@ionic/vue";
-import { close } from "ionicons/icons";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { Capacitor } from "@capacitor/core";
+import { IonButton, IonContent, IonIcon, IonModal } from "@ionic/vue";
+import { close, informationCircleOutline } from "ionicons/icons";
 import Swiper from "swiper";
 import { Virtual, Zoom } from "swiper/modules";
 import type { VirtualData } from "swiper/types";
 import "swiper/css";
 import "swiper/css/virtual";
 import "swiper/css/zoom";
+import PhotoInfoPanel from "@/components/PhotoInfoPanel.vue";
 import PhotoSlide from "@/components/PhotoSlide.vue";
-import type { PhotoTile } from "@/services/galleryParsers";
+import type { MapProvider, PhotoTile } from "@/services/galleryParsers";
+import type { GalleryContext } from "@/stores/galleryContext";
+import { createPhotoAlbums } from "@/stores/photoAlbums";
 import { createSingleTap } from "@/utils/singleTap";
 import { counterText, shouldLoadMore } from "@/utils/viewerSlides";
 
@@ -46,6 +74,12 @@ const props = defineProps<{
 	total: number;
 	hasMore: boolean;
 	loadMore: () => Promise<void>;
+	/** FR-008-01: false when the server disables EXIF for all. */
+	infoAllowed: boolean;
+	/** FR-008-05: `Album::head` `config.is_map_accessible`. */
+	mapAllowed: boolean;
+	/** For the info panel's album list (FR-008-06). */
+	galleryContext: () => GalleryContext | null;
 }>();
 const emit = defineEmits<{ close: []; index: [index: number] }>();
 
@@ -59,6 +93,33 @@ const originals = ref(new Set<string>());
 const chromeVisible = ref(true);
 let swiper: Swiper | undefined;
 let loadingMore = false;
+
+// FR-008-01: the info panel follows the photo on screen while it is open.
+const infoOpen = ref(false);
+const infoPhoto = computed(() => props.photos[activeIndex.value]);
+const albums = createPhotoAlbums();
+const mapProvider = ref<MapProvider | null>(null);
+const platform = Capacitor.getPlatform();
+
+async function openInfo(): Promise<void> {
+	infoOpen.value = true;
+	const ctx = props.galleryContext();
+	if (ctx !== null && mapProvider.value === null) {
+		mapProvider.value = await ctx.gallery.mapProvider();
+	}
+}
+
+watch([infoOpen, infoPhoto], ([open, photo]) => {
+	const ctx = props.galleryContext();
+	if (open && photo !== undefined && ctx !== null) {
+		void albums.load(ctx, photo.id);
+	}
+});
+
+/** NC-008-01: Capacitor hands navigations outside the app (`geo:`, `maps://`) to the OS. */
+function openExternal(url: string): void {
+	window.location.href = url;
+}
 
 const taps = createSingleTap(() => {
 	chromeVisible.value = !chromeVisible.value;
@@ -176,6 +237,11 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
+/* FR-008-01: the info sheet stays readable on tablets. */
+ion-modal.photo-info-sheet {
+	--max-width: 600px;
+}
+
 /* The viewer's modal covers the whole screen, also on tablets. */
 ion-modal.photo-viewer-modal {
 	--width: 100%;

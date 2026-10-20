@@ -18,6 +18,8 @@ import passwordRequired from "@/services/__fixtures__/lychee-7.11.1/error-passwo
 import galleryLocked from "@/services/__fixtures__/lychee-7.11.1/error-gallery-locked.json";
 import wrongPassword from "@/services/__fixtures__/lychee-7.11.1/error-wrong-password.json";
 import error422Delete from "@/services/__fixtures__/lychee-7.11.1/error-422-delete.json";
+import photoAlbums from "@/services/__fixtures__/lychee-7.11.1/photo-albums.json";
+import mapProvider from "@/services/__fixtures__/lychee-7.11.1/map-provider.json";
 
 const SERVER = "https://photos.example.com";
 
@@ -62,7 +64,10 @@ describe("gallery requests (ADR-003-01)", () => {
 	it("loads the gallery settings", async () => {
 		const deps = server({ "GET Gallery::Init": () => json(galleryInit) });
 
-		expect(await createGallery(SERVER, deps).settings()).toEqual({ kind: "ok", value: { nsfwVisible: true, nsfwBlurred: false } });
+		expect(await createGallery(SERVER, deps).settings()).toEqual({
+			kind: "ok",
+			value: { nsfwVisible: true, nsfwBlurred: false, exifDisabled: false },
+		});
 	});
 
 	it("asks for an album's head, sub-albums and photos by id and page", async () => {
@@ -208,5 +213,72 @@ describe("download requests (FR-007-04, API-007-02)", () => {
 		deps.readCookies.mockResolvedValue({});
 
 		expect((await createGallery(SERVER, deps).downloadRequest("p1", "a1")).headers).toEqual({});
+	});
+});
+
+describe("photo albums (FR-008-06, API-008-02)", () => {
+	it("lists the albums the user can see", async () => {
+		const deps = server({ "GET Photo/p1/albums": () => json(photoAlbums) });
+
+		expect(await createGallery(SERVER, deps).photoAlbums("p1")).toEqual({
+			kind: "ok",
+			albums: [
+				{ id: "a1Bc2De3Fg4Hi5Jk6Lm7No8P", title: "Mallory LaPaglia" },
+				{ id: "b2Cd3Ef4Gh5Ij6Kl7Mn8Op9Q", title: "Holidays" },
+			],
+		});
+		expect(urlsOf(deps)).toEqual([`${SERVER}/api/v2/Photo/p1/albums`]);
+	});
+
+	it("reads an empty list", async () => {
+		const deps = server({ "GET Photo/p1/albums": () => json([]) });
+
+		expect(await createGallery(SERVER, deps).photoAlbums("p1")).toEqual({ kind: "ok", albums: [] });
+	});
+
+	it.each([
+		["404 (Lychee before 7.4.0, S-008-08)", () => new Response("", { status: 404 }), "unsupported"],
+		["401", () => json(error401, 401), "unauthenticated"],
+		["500 (S-008-09)", () => json({ message: "Server error" }, 500), "failed"],
+		["a network error", () => Promise.reject(new TypeError("Failed to fetch")), "failed"],
+		["an unreadable body", () => json({ albums: [] }), "failed"],
+	] as [string, Route, string][])("maps %s", async (_, route, kind) => {
+		const deps = server({ "GET Photo/p1/albums": route });
+
+		expect(await createGallery(SERVER, deps).photoAlbums("p1")).toEqual({ kind });
+	});
+
+	it("gives up after the timeout", async () => {
+		vi.useFakeTimers();
+		const result = createGallery(SERVER, server({ "GET Photo/p1/albums": never })).photoAlbums("p1");
+
+		await vi.advanceTimersByTimeAsync(GALLERY_TIMEOUT_MS);
+
+		expect(await result).toEqual({ kind: "failed" });
+	});
+});
+
+describe("map provider (API-008-03)", () => {
+	it("reads the tile layer and attribution, once per server", async () => {
+		const deps = server({ "GET Map::provider": () => json(mapProvider) });
+		const gallery = createGallery(SERVER, deps);
+
+		expect(await gallery.mapProvider()).toEqual({
+			layer: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+			attribution: "© OpenStreetMap contributors",
+		});
+		await gallery.mapProvider();
+
+		expect(urlsOf(deps)).toEqual([`${SERVER}/api/v2/Map::provider`]);
+	});
+
+	it("gives null on failure and asks again next time", async () => {
+		const deps = server({ "GET Map::provider": () => json({ message: "Server error" }, 500) });
+		const gallery = createGallery(SERVER, deps);
+
+		expect(await gallery.mapProvider()).toBeNull();
+		await gallery.mapProvider();
+
+		expect(urlsOf(deps)).toHaveLength(2);
 	});
 });

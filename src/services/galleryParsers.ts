@@ -3,6 +3,8 @@
  * Copyright (c) 2026 Lychee-Mobile contributors.
  */
 
+import { htmlToText, parsePhotoDetails, type PhotoDetails } from "@/services/photoDetails";
+
 /**
  * Parsers for Lychee's v2 gallery responses (ADR-003-01). They turn raw JSON
  * into the app's own types and return `undefined` when a payload isn't
@@ -27,6 +29,8 @@ export type PhotoTile = {
 	kind: PhotoKind;
 	mimeType: string | null;
 	thumb: Thumb | null;
+	/** DO-008-01: what the info panel shows. */
+	details: PhotoDetails;
 	variants: Variants;
 	liveUrl: string | null;
 };
@@ -47,13 +51,21 @@ export type AlbumHead = {
 	canUpload: boolean;
 	canDownload: boolean;
 	canDelete: boolean;
+	/** FR-008-05: `config.is_map_accessible`. */
+	mapAllowed: boolean;
 };
 
 /** DO-003-05, DO-004-02. */
 export type Page<T> = { items: T[]; page: number; lastPage: number; total: number };
 
-/** DO-003-07. */
-export type GallerySettings = { nsfwVisible: boolean; nsfwBlurred: boolean };
+/** DO-008-03: an album a photo is in (`PhotoAlbumResource`). */
+export type PhotoAlbum = { id: string; title: string };
+
+/** API-008-03: tile URL template and attribution as text (NFR-008-02). */
+export type MapProvider = { layer: string; attribution: string };
+
+/** DO-003-07; `exifDisabled`: no info panel (FR-008-01, DO-008-02). */
+export type GallerySettings = { nsfwVisible: boolean; nsfwBlurred: boolean; exifDisabled: boolean };
 
 type Json = Record<string, unknown>;
 
@@ -97,6 +109,7 @@ export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
 		canUpload: canUploadOf(resource.rights),
 		canDownload: rightOf(resource.rights, "can_download"),
 		canDelete: rightOf(resource.rights, "can_delete"),
+		mapAllowed: config.is_map_accessible === true,
 	};
 }
 
@@ -112,7 +125,29 @@ export function parseGallerySettings(payload: unknown): GallerySettings | undefi
 	if (!isObject(payload) || typeof payload.are_nsfw_visible !== "boolean" || typeof payload.is_nsfw_background_blurred !== "boolean") {
 		return undefined;
 	}
-	return { nsfwVisible: payload.are_nsfw_visible, nsfwBlurred: payload.is_nsfw_background_blurred };
+	return {
+		nsfwVisible: payload.are_nsfw_visible,
+		nsfwBlurred: payload.is_nsfw_background_blurred,
+		exifDisabled: payload.is_exif_disabled === true,
+	};
+}
+
+/** API-008-02: `PhotoAlbumResource[]`; malformed entries are dropped. */
+export function parsePhotoAlbums(payload: unknown): PhotoAlbum[] | undefined {
+	if (!Array.isArray(payload)) {
+		return undefined;
+	}
+	return tilesOf(payload, (item) =>
+		isObject(item) && typeof item.id === "string" && typeof item.title === "string" ? { id: item.id, title: item.title } : undefined,
+	);
+}
+
+/** API-008-03: `MapProviderData`. */
+export function parseMapProvider(payload: unknown): MapProvider | undefined {
+	if (!isObject(payload) || typeof payload.layer !== "string" || payload.layer.trim() === "") {
+		return undefined;
+	}
+	return { layer: payload.layer.trim(), attribution: typeof payload.attribution === "string" ? htmlToText(payload.attribution) : "" };
 }
 
 function parseAlbumTile(payload: unknown): AlbumTile | undefined {
@@ -144,6 +179,7 @@ function parsePhotoTile(payload: unknown): PhotoTile | undefined {
 		thumb: thumbOf(urlOf(variants.thumb), urlOf(variants.thumb2x)),
 		variants: Object.fromEntries(VARIANT_NAMES.map((name) => [name, variantOf(variants[name])])) as Variants,
 		liveUrl: typeof payload.live_photo_url === "string" && payload.live_photo_url !== "" ? payload.live_photo_url : null,
+		details: parsePhotoDetails(payload),
 	};
 }
 
