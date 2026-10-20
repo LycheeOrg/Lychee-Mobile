@@ -66,6 +66,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Lychee saves the photos you download to your library.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- ADR-001-02: plain http only for local-network Lychee servers. -->

@@ -4,7 +4,7 @@
  */
 
 import { vi } from "vite-plus/test";
-import type { Gallery, GalleryResult, UnlockResult } from "@/services/gallery";
+import type { DeleteResult, Gallery, GalleryResult, UnlockResult } from "@/services/gallery";
 import type { AlbumHead, AlbumTile, Page, PhotoTile, RootAlbums } from "@/services/galleryParsers";
 
 export const ok = <T>(value: T): GalleryResult<T> => ({ kind: "ok", value });
@@ -15,11 +15,21 @@ export function albumTile(id: string, overrides: Partial<AlbumTile> = {}): Album
 
 export function photoTile(id: string): PhotoTile {
 	const none = { medium2x: null, medium: null, original: null, small2x: null, small: null, thumb2x: null, thumb: null };
-	return { id, title: id, kind: "photo", thumb: null, variants: none, liveUrl: null };
+	return { id, title: id, kind: "photo", mimeType: "image/jpeg", thumb: null, variants: none, liveUrl: null };
 }
 
 export function head(overrides: Partial<AlbumHead> = {}): AlbumHead {
-	return { id: "a1", title: "Holidays", kind: "album", hasSubAlbums: false, nsfwWarning: false, canUpload: false, ...overrides };
+	return {
+		id: "a1",
+		title: "Holidays",
+		kind: "album",
+		hasSubAlbums: false,
+		nsfwWarning: false,
+		canUpload: false,
+		canDownload: false,
+		canDelete: false,
+		...overrides,
+	};
 }
 
 export function page<T>(items: T[], current: number, last: number, total = items.length): Page<T> {
@@ -34,6 +44,7 @@ export function fakeGallery(answers: {
 	albums?: GalleryResult<Page<AlbumTile>>[];
 	photos?: GalleryResult<Page<PhotoTile>>[];
 	unlock?: UnlockResult[];
+	deletes?: DeleteResult[];
 }) {
 	const next = <T>(queue: T[] | undefined, fallback: T): T => queue?.shift() ?? fallback;
 	const failed = { kind: "failed" as const };
@@ -45,6 +56,8 @@ export function fakeGallery(answers: {
 		photos: vi.fn<Gallery["photos"]>(async () => next(answers.photos, failed)),
 		unlockAlbum: vi.fn<Gallery["unlockAlbum"]>(async () => next(answers.unlock, failed)),
 		unlockGallery: vi.fn<Gallery["unlockGallery"]>(async () => next(answers.unlock, failed)),
+		deletePhotos: vi.fn<Gallery["deletePhotos"]>(async () => next(answers.deletes, failed)),
+		downloadRequest: vi.fn<Gallery["downloadRequest"]>(async (id, from) => ({ url: `zip/${id}/${from}`, headers: {} })),
 	} satisfies Gallery;
 }
 

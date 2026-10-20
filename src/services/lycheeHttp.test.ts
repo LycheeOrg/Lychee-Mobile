@@ -196,3 +196,47 @@ describe("createLycheeHttp: multipart (API-005-02)", () => {
 		expect(response.status).toBe(200);
 	});
 });
+
+describe("createLycheeHttp: delete and download requests (API-007-01, API-007-02)", () => {
+	it("sends a DELETE with a JSON body, the JSON headers and the XSRF token", async () => {
+		const d = deps();
+		await createLycheeHttp(BASE, d).delete("Photo", { photo_ids: ["p1"], from_id: "a1" });
+
+		const [url, init] = d.fetch.mock.calls[1];
+		expect(url).toBe(`${BASE}/api/v2/Photo`);
+		expect(init?.method).toBe("DELETE");
+		expect(init?.body).toBe(JSON.stringify({ photo_ids: ["p1"], from_id: "a1" }));
+		expect(headersOf(d.fetch.mock.calls[1]).get("Content-Type")).toBe("application/json");
+		expect(headersOf(d.fetch.mock.calls[1]).get("X-XSRF-TOKEN")).toBe("abc==");
+	});
+
+	it("resends the DELETE once after a 419", async () => {
+		const d = deps();
+		let deletes = 0;
+		d.fetch.mockImplementation(async (url) => {
+			if (url === `${BASE}/`) {
+				return new Response("");
+			}
+			deletes += 1;
+			return new Response(deletes === 1 ? "{}" : null, { status: deletes === 1 ? 419 : 204 });
+		});
+
+		const response = await createLycheeHttp(BASE, d).delete("Photo", { photo_ids: ["p1"] });
+
+		expect(response.status).toBe(204);
+		expect(d.fetch.mock.calls.filter((call) => call[1]?.method === "DELETE")).toHaveLength(2);
+	});
+
+	it("builds an API URL with an encoded query", () => {
+		const http = createLycheeHttp(BASE, deps());
+
+		expect(http.apiUrl("Zip", { photo_ids: "p1", from_id: "a b" })).toBe(`${BASE}/api/v2/Zip?photo_ids=p1&from_id=a+b`);
+	});
+
+	it("builds a Cookie header from the server's cookies", async () => {
+		const d = deps();
+
+		expect(await createLycheeHttp(BASE, d).cookieHeader()).toBe("XSRF-TOKEN=abc%3D%3D; lychee_session=s");
+		expect(d.readCookies).toHaveBeenCalledWith(BASE);
+	});
+});

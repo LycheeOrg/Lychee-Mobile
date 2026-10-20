@@ -22,6 +22,9 @@ import { TIMED_OUT, withTimeout } from "@/services/timeout";
 /** NFR-003-01. */
 export const GALLERY_TIMEOUT_MS = 10_000;
 
+/** FR-007-03: deleting many photos can take longer than browsing. */
+export const DELETE_TIMEOUT_MS = 30_000;
+
 /** FR-003-04: `Album::head`, `Album::albums` and `Album::photos` arrived in 7.1.0. */
 export const MIN_BROWSING_VERSION = "7.1.0";
 
@@ -32,6 +35,12 @@ export type GalleryResult<T> = { kind: "ok"; value: T } | { kind: GalleryFailure
 export type UnlockFailure = "wrong_password" | "throttled" | "unreachable" | "failed";
 export type UnlockResult = { kind: "ok" } | { kind: UnlockFailure };
 
+/** DO-007-03: `timeout` is kept apart because the photos may have been deleted. */
+export type DeleteResult = { kind: "ok" | "unauthenticated" | "forbidden" | "failed" | "unreachable" | "timeout" };
+
+/** FR-007-04: what file-transfer needs to fetch one photo's original. */
+export type DownloadRequest = { url: string; headers: Record<string, string> };
+
 export type Gallery = {
 	root: () => Promise<GalleryResult<RootAlbums>>;
 	settings: () => Promise<GalleryResult<GallerySettings>>;
@@ -40,6 +49,9 @@ export type Gallery = {
 	photos: (albumId: string, page: number) => Promise<GalleryResult<Page<PhotoTile>>>;
 	unlockAlbum: (albumId: string, password: string) => Promise<UnlockResult>;
 	unlockGallery: (password: string) => Promise<UnlockResult>;
+	/** FR-007-03: `fromId` is the album or `"unsorted"`. */
+	deletePhotos: (photoIds: string[], fromId: string) => Promise<DeleteResult>;
+	downloadRequest: (photoId: string, fromId: string) => Promise<DownloadRequest>;
 };
 
 /** Failures named by Lychee's `exception` field, whatever the status. */
@@ -48,6 +60,7 @@ const FAILURE_BY_EXCEPTION: Record<string, GalleryFailure> = {
 	GalleryPasswordRequiredException: "gallery_locked",
 };
 const FAILURE_BY_STATUS: Record<number, GalleryFailure> = { 401: "unauthenticated", 403: "forbidden", 404: "not_found" };
+const DELETE_FAILURE_BY_STATUS: Record<number, DeleteResult["kind"]> = { 401: "unauthenticated", 403: "forbidden" };
 const UNLOCK_FAILURE_BY_STATUS: Record<number, UnlockFailure> = { 403: "wrong_password", 429: "throttled" };
 
 /**
@@ -65,6 +78,15 @@ export function createGallery(server: string, deps: LycheeHttpDeps = nativeDeps)
 		photos: (albumId, page) => load(http, "Album::photos", { album_id: albumId, page }, parsePhotoPage),
 		unlockAlbum: (albumId, password) => unlock(http, "Album::unlock", { album_id: albumId, password }),
 		unlockGallery: (password) => unlock(http, "Gallery::unlock", { password }),
+		deletePhotos: (photoIds, fromId) => deletePhotos(http, photoIds, fromId),
+		downloadRequest: async (photoId, fromId) => {
+			const cookie = await http.cookieHeader();
+			const headers: Record<string, string> = cookie === "" ? {} : { Cookie: cookie };
+			return {
+				url: http.apiUrl("Zip", { photo_ids: photoId, variant: "ORIGINAL", from_id: fromId }),
+				headers,
+			};
+		},
 	};
 }
 
@@ -107,6 +129,18 @@ async function unlock(http: LycheeHttp, path: string, body: Record<string, strin
 			return { kind: "unreachable" };
 		}
 		return response.ok ? { kind: "ok" } : { kind: UNLOCK_FAILURE_BY_STATUS[response.status] ?? "failed" };
+	} catch {
+		return { kind: "unreachable" };
+	}
+}
+
+async function deletePhotos(http: LycheeHttp, photoIds: string[], fromId: string): Promise<DeleteResult> {
+	try {
+		const response = await withTimeout((signal) => http.delete("Photo", { photo_ids: photoIds, from_id: fromId }, signal), DELETE_TIMEOUT_MS);
+		if (response === TIMED_OUT) {
+			return { kind: "timeout" };
+		}
+		return { kind: response.ok ? "ok" : (DELETE_FAILURE_BY_STATUS[response.status] ?? "failed") };
 	} catch {
 		return { kind: "unreachable" };
 	}

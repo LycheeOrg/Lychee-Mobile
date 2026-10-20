@@ -274,3 +274,147 @@ describe("silent login (FR-006-02, S-006-02)", () => {
 		expect(album.state.status).toBe("sign_in");
 	});
 });
+
+describe("delete selected photos (FR-007-03)", () => {
+	async function loaded(albumId: string, gallery: ReturnType<typeof fakeGallery>, ctx = context(gallery)) {
+		const album = createAlbumPage(albumId, new Set());
+		await album.load(ctx);
+		return album;
+	}
+
+	it("clears the selection on every load (S-007-15)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head()), ok(head())],
+			photos: [ok(page([photoTile("p1")], 1, 1)), ok(page([photoTile("p1")], 1, 1))],
+		});
+		const album = await loaded("a1", gallery);
+		album.selection.start("p1");
+
+		await album.load(context(gallery));
+
+		expect(album.selection.state.active).toBe(false);
+	});
+
+	it("deletes from this album and drops the photos from the grid (S-007-05)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head())],
+			photos: [ok(page([photoTile("p1"), photoTile("p2"), photoTile("p3")], 1, 1))],
+			deletes: [{ kind: "ok" }],
+		});
+		const album = await loaded("a1", gallery);
+		album.selection.start("p1");
+		album.selection.toggle("p3");
+
+		expect(await album.deleteSelected(context(gallery))).toBe("ok");
+
+		expect(gallery.deletePhotos).toHaveBeenCalledWith(["p1", "p3"], "a1");
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p2"]);
+		expect(album.state.photoTotal).toBe(1);
+		expect(album.selection.state.active).toBe(false);
+	});
+
+	it("deletes from Unsorted with its id (S-007-06)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head({ id: "unsorted", kind: "smart" }))],
+			photos: [ok(page([photoTile("p1")], 1, 1))],
+			deletes: [{ kind: "ok" }],
+		});
+		const album = await loaded("unsorted", gallery);
+		album.selection.start("p1");
+
+		await album.deleteSelected(context(gallery));
+
+		expect(gallery.deletePhotos).toHaveBeenCalledWith(["p1"], "unsorted");
+	});
+
+	it("signs in silently once and deletes again (S-007-08)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head())],
+			photos: [ok(page([photoTile("p1"), photoTile("p2")], 1, 1))],
+			deletes: [{ kind: "unauthenticated" }, { kind: "ok" }],
+		});
+		const ctx = context(gallery, true, true);
+		const album = await loaded("a1", gallery, ctx);
+		album.selection.start("p1");
+
+		expect(await album.deleteSelected(ctx)).toBe("ok");
+
+		expect(ctx.onUnauthenticated).toHaveBeenCalledTimes(1);
+		expect(gallery.deletePhotos).toHaveBeenCalledTimes(2);
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p2"]);
+	});
+
+	it("hands over to sign-in when the silent login fails", async () => {
+		const gallery = fakeGallery({ head: [ok(head())], photos: [ok(page([photoTile("p1")], 1, 1))], deletes: [{ kind: "unauthenticated" }] });
+		const ctx = context(gallery, true, false);
+		const album = await loaded("a1", gallery, ctx);
+		album.selection.start("p1");
+
+		expect(await album.deleteSelected(ctx)).toBe("unauthenticated");
+
+		expect(album.state.status).toBe("sign_in");
+		expect(album.state.sessionEnded).toBe(true);
+	});
+
+	it.each(["forbidden", "failed", "unreachable"] as const)("keeps photos and selection when the delete is %s (S-007-07)", async (kind) => {
+		const gallery = fakeGallery({ head: [ok(head())], photos: [ok(page([photoTile("p1")], 1, 1))], deletes: [{ kind }] });
+		const album = await loaded("a1", gallery);
+		album.selection.start("p1");
+
+		expect(await album.deleteSelected(context(gallery))).toBe(kind);
+
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p1"]);
+		expect(album.selection.ids()).toEqual(["p1"]);
+	});
+
+	it("reloads the album after a timeout, since photos may be gone (S-007-09)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head()), ok(head())],
+			photos: [ok(page([photoTile("p1"), photoTile("p2")], 1, 1)), ok(page([photoTile("p2")], 1, 1))],
+			deletes: [{ kind: "timeout" }],
+		});
+		const album = await loaded("a1", gallery);
+		album.selection.start("p1");
+
+		expect(await album.deleteSelected(context(gallery))).toBe("timeout");
+
+		expect(gallery.head).toHaveBeenCalledTimes(2);
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p2"]);
+	});
+
+	it("does nothing with no photo selected", async () => {
+		const gallery = fakeGallery({ head: [ok(head())], photos: [ok(page([photoTile("p1")], 1, 1))] });
+		const album = await loaded("a1", gallery);
+		album.selection.start();
+
+		expect(await album.deleteSelected(context(gallery))).toBe("ok");
+
+		expect(gallery.deletePhotos).not.toHaveBeenCalled();
+	});
+
+	it("steps back a page so photos that moved up still load, once each (S-007-19)", async () => {
+		const gallery = fakeGallery({
+			head: [ok(head())],
+			photos: [
+				ok(page([photoTile("p1"), photoTile("p2")], 1, 3, 6)),
+				ok(page([photoTile("p3"), photoTile("p4")], 2, 3, 6)),
+				// After deleting p1 the server's pages are p2 p3 | p4 p5 | p6.
+				ok(page([photoTile("p4"), photoTile("p5")], 2, 3, 5)),
+				ok(page([photoTile("p6")], 3, 3, 5)),
+			],
+			deletes: [{ kind: "ok" }],
+		});
+		const ctx = context(gallery);
+		const album = await loaded("a1", gallery, ctx);
+		await album.loadMore(ctx);
+		album.selection.start("p1");
+
+		await album.deleteSelected(ctx);
+		await album.loadMore(ctx);
+		await album.loadMore(ctx);
+
+		expect(gallery.photos.mock.calls.map((call) => call[1])).toEqual([1, 2, 2, 3]);
+		expect(album.state.photos.map((p) => p.id)).toEqual(["p2", "p3", "p4", "p5", "p6"]);
+		expect(album.state.hasMore).toBe(false);
+	});
+});

@@ -5,14 +5,19 @@
 
 package com.mlapaglia.lycheemobile;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
@@ -20,12 +25,16 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.contract.ActivityResultContracts;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,13 +51,25 @@ import java.util.regex.Pattern;
  * only serves the original through {@link MediaStore#setRequireOriginal(Uri)} when the user
  * turned on "Include location" in the photo picker; otherwise it throws, and the file is copied
  * as served (without location) rather than failing (Q-005-06).
+ *
+ * <p>NC-007-04 (Feature 007, ADR-007-01): saves downloaded files into {@code Pictures/Lychee} or
+ * {@code Movies/Lychee}, where they outlive the app (Q-007-07).
  */
-@CapacitorPlugin(name = "OriginalMedia")
+@CapacitorPlugin(
+    name = "OriginalMedia",
+    permissions = { @Permission(alias = OriginalMediaPlugin.STORAGE, strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }) }
+)
 public class OriginalMediaPlugin extends Plugin {
+
+    /** Android 7–9 only; the manifest declares it with {@code maxSdkVersion="28"} (FR-007-05). */
+    static final String STORAGE = "storage";
 
     private static final String UNREADABLE = "UNREADABLE";
     private static final String CANCELLED = "CANCELLED";
     private static final String UNAVAILABLE = "UNAVAILABLE";
+    private static final String PERMISSION_DENIED = "PERMISSION_DENIED";
+    private static final String UNSAVEABLE = "UNSAVEABLE";
+    private static final String GALLERY_FOLDER = "Lychee";
     /** Public since API 35 ({@code MediaStore.EXTRA_ACCEPT_ORIGINAL_MEDIA_FORMAT}): no transcoding. */
     private static final String EXTRA_ACCEPT_ORIGINAL_MEDIA_FORMAT = "android.provider.extra.ACCEPT_ORIGINAL_MEDIA_FORMAT";
     /**
@@ -155,16 +176,126 @@ public class OriginalMediaPlugin extends Plugin {
         call.resolve();
     }
 
+    /** NC-007-04: copies a downloaded file into the shared Pictures or Movies folder. */
+    @PluginMethod
+    public void saveToGallery(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && getPermissionState(STORAGE) != PermissionState.GRANTED) {
+            requestPermissionForAlias(STORAGE, call, "storagePermission");
+            return;
+        }
+        save(call);
+    }
+
+    @PermissionCallback
+    private void storagePermission(PluginCall call) {
+        if (getPermissionState(STORAGE) != PermissionState.GRANTED) {
+            call.reject("Storage permission denied.", PERMISSION_DENIED);
+            return;
+        }
+        save(call);
+    }
+
+    private void save(PluginCall call) {
+        String path = call.getString("path");
+        String name = call.getString("name");
+        String mimeType = call.getString("mimeType");
+        String filePath = path == null ? null : Uri.parse(path).getPath();
+        if (filePath == null || name == null || mimeType == null || !new File(filePath).isFile()) {
+            call.reject("path, name or mimeType is missing.", UNSAVEABLE);
+            return;
+        }
+        File source = new File(filePath);
+        boolean video = mimeType.startsWith("video/");
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                saveToMediaStore(source, name, mimeType, video);
+            } else {
+                saveToPublicFolder(source, name, mimeType, video);
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()), UNSAVEABLE);
+        }
+    }
+
+    /** API 29+: no permission; pending until the bytes are written, so the gallery never shows half a file. */
+    private void saveToMediaStore(File source, String name, String mimeType, boolean video) throws IOException {
+        ContentResolver resolver = getContext().getContentResolver();
+        Uri collection = video
+            ? MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            : MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+        values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, sharedFolderOf(video) + File.separator + GALLERY_FOLDER);
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+        Uri item = resolver.insert(collection, values);
+        if (item == null) {
+            throw new IOException("MediaStore refused " + name);
+        }
+        try {
+            try (InputStream in = new FileInputStream(source); OutputStream out = resolver.openOutputStream(item)) {
+                if (out == null) {
+                    throw new IOException("No output for " + item);
+                }
+                copyStream(in, out);
+            }
+            ContentValues done = new ContentValues();
+            done.put(MediaStore.MediaColumns.IS_PENDING, 0);
+            resolver.update(item, done, null, null);
+        } catch (IOException | RuntimeException e) {
+            resolver.delete(item, null, null);
+            throw e;
+        }
+    }
+
+    /** API 24–28: a plain copy into the public folder, then a media scan so the gallery sees it. */
+    @SuppressWarnings("deprecation")
+    private void saveToPublicFolder(File source, String name, String mimeType, boolean video) throws IOException {
+        File dir = new File(Environment.getExternalStoragePublicDirectory(sharedFolderOf(video)), GALLERY_FOLDER);
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            throw new IOException("Can't create " + dir);
+        }
+        File target = freeFileIn(dir, name);
+        try (InputStream in = new FileInputStream(source); OutputStream out = new FileOutputStream(target)) {
+            copyStream(in, out);
+        } catch (IOException e) {
+            target.delete();
+            throw e;
+        }
+        MediaScannerConnection.scanFile(getContext(), new String[] { target.getAbsolutePath() }, new String[] { mimeType }, null);
+    }
+
+    private static String sharedFolderOf(boolean video) {
+        return video ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_PICTURES;
+    }
+
+    /** {@code name}, or {@code name (2).ext}, … when taken (MediaStore numbers names itself on API 29+). */
+    private static File freeFileIn(File dir, String name) {
+        File file = new File(dir, name);
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        String extension = dot > 0 ? name.substring(dot) : "";
+        for (int n = 2; file.exists(); n++) {
+            file = new File(dir, base + " (" + n + ")" + extension);
+        }
+        return file;
+    }
+
     private void copy(Uri from, File to) throws IOException {
         try (InputStream in = getContext().getContentResolver().openInputStream(from); OutputStream out = new FileOutputStream(to)) {
             if (in == null) {
                 throw new IOException("No data for " + from);
             }
-            byte[] buffer = new byte[BUFFER_SIZE];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
+            copyStream(in, out);
+        }
+    }
+
+    private static void copyStream(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
         }
     }
 

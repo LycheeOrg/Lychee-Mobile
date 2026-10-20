@@ -6,7 +6,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { UploadResult } from "@/services/upload";
 
-/** NC-005-03: the app's own Android plugin (`OriginalMediaPlugin.java`). */
+/** NC-005-03, NC-007-04: the app's own Android plugin (`OriginalMediaPlugin.java`). */
 export type NativePickedFile = { path: string; name: string; mimeType: string; size: number; modifiedAt?: number };
 
 export type OriginalMediaPlugin = {
@@ -15,6 +15,11 @@ export type OriginalMediaPlugin = {
 	/** Copies the original into the app cache and reports whether it carries a location (NFR-005-04). */
 	prepare: (options: { uri: string }) => Promise<{ path: string; location: "present" | "missing" | "unknown" }>;
 	release: (options: { path: string }) => Promise<void>;
+	/**
+	 * NC-007-04: copies a downloaded file into `Pictures/Lychee` or `Movies/Lychee`; rejects with
+	 * `PERMISSION_DENIED` (Android 7–9 storage permission refused) or `UNSAVEABLE`.
+	 */
+	saveToGallery: (options: { path: string; name: string; mimeType: string }) => Promise<void>;
 };
 
 export const OriginalMedia = registerPlugin<OriginalMediaPlugin>("OriginalMedia");

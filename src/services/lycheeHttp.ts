@@ -27,9 +27,17 @@ export type LycheeHttp = {
 	post: (path: string, body: unknown, signal?: AbortSignal) => Promise<Response>;
 	/** `POST {server}/api/v2/{path}` as multipart; the native layer sets the boundary (API-005-02). */
 	postForm: (path: string, form: FormData, signal?: AbortSignal) => Promise<Response>;
+	/** `DELETE {server}/api/v2/{path}` with `body` as JSON (API-007-01). */
+	delete: (path: string, body: unknown, signal?: AbortSignal) => Promise<Response>;
+	/** `{server}/api/v2/{path}?{query}`, for requests sent by other native stacks (API-007-02). */
+	apiUrl: (path: string, query?: QueryParams) => string;
+	/** The server's cookies as a `Cookie` header, for those requests (NFR-007-06). */
+	cookieHeader: () => Promise<string>;
 	/** Drops the server's cookies; the next call starts a new session. */
 	clearCookies: () => Promise<void>;
 };
+
+type Method = "GET" | "POST" | "DELETE";
 
 const XSRF_COOKIE = "XSRF-TOKEN";
 /** Laravel's status for an expired session or CSRF token. */
@@ -74,13 +82,17 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 		return headers;
 	}
 
-	async function send(method: "GET" | "POST", url: string, init: RequestInit): Promise<Response> {
+	async function send(method: Method, url: string, init: RequestInit): Promise<Response> {
 		await startSession(init.signal ?? undefined);
 		return deps.fetch(url, { ...init, method, headers: await apiHeaders(init.body instanceof FormData) });
 	}
 
-	async function request(method: "GET" | "POST", path: string, init: RequestInit, query?: QueryParams): Promise<Response> {
-		const url = `${baseUrl}/api/v2/${path}${queryString(query)}`;
+	function apiUrl(path: string, query?: QueryParams): string {
+		return `${baseUrl}/api/v2/${path}${queryString(query)}`;
+	}
+
+	async function request(method: Method, path: string, init: RequestInit, query?: QueryParams): Promise<Response> {
+		const url = apiUrl(path, query);
 		const response = await send(method, url, init);
 		if (response.status !== SESSION_EXPIRED) {
 			return response;
@@ -93,6 +105,14 @@ export function createLycheeHttp(baseUrl: string, deps: LycheeHttpDeps = nativeD
 		get: (path, signal, query) => request("GET", path, { signal }, query),
 		post: (path, body, signal) => request("POST", path, { body: JSON.stringify(body), signal }),
 		postForm: (path, form, signal) => request("POST", path, { body: form, signal }),
+		delete: (path, body, signal) => request("DELETE", path, { body: JSON.stringify(body), signal }),
+		apiUrl,
+		async cookieHeader() {
+			const cookies = await deps.readCookies(baseUrl);
+			return Object.entries(cookies)
+				.map(([name, value]) => `${name}=${value}`)
+				.join("; ");
+		},
 		async clearCookies() {
 			await deps.clearCookies(baseUrl);
 			hasSession = false;
