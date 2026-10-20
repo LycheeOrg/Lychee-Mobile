@@ -20,11 +20,7 @@ type AccountStoreDeps = {
 		load: (server: string) => Promise<Credentials | null>;
 		forget: () => Promise<void>;
 	};
-	now: () => number;
 };
-
-/** NFR-006-02: no second silent login this soon after a successful one. */
-const REAUTH_COOLDOWN_MS = 60_000;
 
 const defaultDeps: AccountStoreDeps = {
 	signIn,
@@ -36,7 +32,6 @@ const defaultDeps: AccountStoreDeps = {
 		load: (server) => loadCredentials(server),
 		forget: () => forgetCredentials(),
 	},
-	now: () => Date.now(),
 };
 
 /**
@@ -55,7 +50,6 @@ export function createAccountStore(deps: AccountStoreDeps = defaultDeps) {
 		passwordRejected: null as string | null,
 	});
 	let pendingReauth: Promise<boolean> | null = null;
-	let lastReauth = Number.NEGATIVE_INFINITY;
 
 	function setAccount(account: Account | null): void {
 		state.account = account;
@@ -89,15 +83,13 @@ export function createAccountStore(deps: AccountStoreDeps = defaultDeps) {
 	}
 
 	/**
-	 * FR-006-02/03: logs in with the stored credentials. Resolves `true` when
-	 * signed in again. One login at a time; none right after a successful one.
+	 * FR-006-02/03, FR-009-03: logs in with the stored credentials. Resolves
+	 * `true` when signed in again. One login at a time; callers retry at most
+	 * once per load, so no cooldown is needed.
 	 */
 	function reauthenticate(server: string): Promise<boolean> {
 		if (pendingReauth !== null) {
 			return pendingReauth;
-		}
-		if (deps.now() - lastReauth < REAUTH_COOLDOWN_MS) {
-			return Promise.resolve(false);
 		}
 		pendingReauth = loginWithStored(server).finally(() => {
 			pendingReauth = null;
@@ -113,9 +105,11 @@ export function createAccountStore(deps: AccountStoreDeps = defaultDeps) {
 		const result = await deps.signIn(server, stored.username, stored.password);
 		if (result.kind === "ok") {
 			setAccount(result.account);
-			lastReauth = deps.now();
+			state.failure = null;
 			return true;
 		}
+		// FR-009-04: Settings shows why a silent login with the stored password failed.
+		state.failure = result.kind;
 		if (result.kind === "wrong_credentials") {
 			await deps.credentials.forget();
 			setAccount(null);
@@ -138,6 +132,11 @@ export function createAccountStore(deps: AccountStoreDeps = defaultDeps) {
 		await deps.credentials.forget();
 	}
 
+	/** FR-009-04: whose credentials are stored for the server, if any. */
+	async function storedUsername(server: string): Promise<string | null> {
+		return (await deps.credentials.load(server))?.username ?? null;
+	}
+
 	function clearPasswordRejected(): void {
 		state.passwordRejected = null;
 	}
@@ -156,6 +155,7 @@ export function createAccountStore(deps: AccountStoreDeps = defaultDeps) {
 		signIn: signInTo,
 		signOut: signOutOf,
 		reauthenticate,
+		storedUsername,
 		reset,
 		clearFailure,
 		clearPasswordRejected,

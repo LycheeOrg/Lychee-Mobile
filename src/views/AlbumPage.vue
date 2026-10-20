@@ -30,7 +30,7 @@
 				v-else-if="state.status === 'sign_in'"
 				:text="signInNeededMessage(state.sessionEnded)"
 				action-label="Sign in"
-				@action="router.push('/login')"
+				@action="router.push('/settings')"
 			/>
 			<PasswordPrompt
 				v-else-if="state.status === 'password'"
@@ -94,7 +94,7 @@
 				:run="downloadRun.state"
 				@retry="retryDownloads"
 				@dismiss="downloadRun.dismiss()"
-				@sign-in="router.push('/login')"
+				@sign-in="router.push('/settings')"
 			/>
 			<IonToolbar v-if="selection.state.active">
 				<div class="actions">

@@ -16,6 +16,7 @@ function plugin(prepare: OriginalMediaPlugin["prepare"] = async () => ({ path: C
 		prepare: vi.fn(prepare),
 		release: vi.fn<OriginalMediaPlugin["release"]>(async () => undefined),
 		saveToGallery: vi.fn<OriginalMediaPlugin["saveToGallery"]>(async () => undefined),
+		requestNameAccess: vi.fn<OriginalMediaPlugin["requestNameAccess"]>(async () => ({ granted: false })),
 	};
 }
 

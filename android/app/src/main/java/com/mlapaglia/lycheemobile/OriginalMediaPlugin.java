@@ -8,6 +8,7 @@ package com.mlapaglia.lycheemobile;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.ContentUris;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -18,6 +19,7 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
@@ -54,15 +56,25 @@ import java.util.regex.Pattern;
  *
  * <p>NC-007-04 (Feature 007, ADR-007-01): saves downloaded files into {@code Pictures/Lychee} or
  * {@code Movies/Lychee}, where they outlive the app (Q-007-07).
+ *
+ * <p>NC-009-02 (Feature 009, ADR-009-01): with photo and video read access, picked files carry the
+ * camera's file name from MediaStore instead of the picker's {@code <id>.<ext>}.
  */
 @CapacitorPlugin(
     name = "OriginalMedia",
-    permissions = { @Permission(alias = OriginalMediaPlugin.STORAGE, strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }) }
+    permissions = {
+        @Permission(alias = OriginalMediaPlugin.STORAGE, strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }),
+        @Permission(alias = OriginalMediaPlugin.MEDIA, strings = { Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO }),
+        @Permission(alias = OriginalMediaPlugin.LEGACY_MEDIA, strings = { Manifest.permission.READ_EXTERNAL_STORAGE }),
+    }
 )
 public class OriginalMediaPlugin extends Plugin {
 
     /** Android 7–9 only; the manifest declares it with {@code maxSdkVersion="28"} (FR-007-05). */
     static final String STORAGE = "storage";
+    /** NC-009-02 (ADR-009-01): reading the camera's file names; Android 13+ and older use different permissions. */
+    static final String MEDIA = "media";
+    static final String LEGACY_MEDIA = "legacyMedia";
 
     private static final String UNREADABLE = "UNREADABLE";
     private static final String CANCELLED = "CANCELLED";
@@ -174,6 +186,56 @@ public class OriginalMediaPlugin extends Plugin {
             }
         }
         call.resolve();
+    }
+
+    /** NC-009-02: asks for photo and video read access; resolves {@code { granted }}, never rejects. */
+    @PluginMethod
+    public void requestNameAccess(PluginCall call) {
+        String alias = mediaAlias();
+        if (getPermissionState(alias) == PermissionState.GRANTED) {
+            resolveNameAccess(call);
+            return;
+        }
+        requestPermissionForAlias(alias, call, "nameAccessResult");
+    }
+
+    @PermissionCallback
+    private void nameAccessResult(PluginCall call) {
+        resolveNameAccess(call);
+    }
+
+    private void resolveNameAccess(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", getPermissionState(mediaAlias()) == PermissionState.GRANTED);
+        call.resolve(result);
+    }
+
+    private static String mediaAlias() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? MEDIA : LEGACY_MEDIA;
+    }
+
+    /**
+     * FR-009-05: the camera's file name of a picked item, from MediaStore by the picker's ID, or
+     * {@code null} without access, with limited access that doesn't cover it, or for cloud-only items.
+     */
+    private String realNameOf(Uri uri) {
+        try {
+            long id = ContentUris.parseId(uri);
+            if (id < 0) {
+                return null;
+            }
+            String[] projection = { MediaStore.MediaColumns.DISPLAY_NAME };
+            String[] args = { String.valueOf(id) };
+            Uri files = MediaStore.Files.getContentUri("external");
+            try (Cursor cursor = getContext().getContentResolver().query(files, projection, BaseColumns._ID + "=?", args, null)) {
+                if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) {
+                    return cursor.getString(0);
+                }
+            }
+        } catch (Exception e) {
+            // No access, or not a MediaStore item: keep the picker's name.
+        }
+        return null;
     }
 
     /** NC-007-04: copies a downloaded file into the shared Pictures or Movies folder. */
@@ -386,6 +448,10 @@ public class OriginalMediaPlugin extends Plugin {
             }
         } catch (Exception e) {
             // Leave the defaults; the upload reports what it can't read.
+        }
+        String realName = realNameOf(uri);
+        if (realName != null && !realName.isEmpty()) {
+            file.put("name", realName);
         }
         return file;
     }

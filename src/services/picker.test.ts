@@ -17,6 +17,9 @@ function deps(platform: "android" | "ios", permission: PermissionState, afterReq
 		requestPermissions: vi.fn<PickerDeps["requestPermissions"]>(async () => status(afterRequest)),
 		pickMedia: vi.fn<PickerDeps["pickMedia"]>(async () => ({ files: [PICKED] })),
 		pickNative: vi.fn<PickerDeps["pickNative"]>(async () => ({ files: [PICKED] })),
+		requestNameAccess: vi.fn<PickerDeps["requestNameAccess"]>(async () => ({ granted: true })),
+		nameAccessAsked: vi.fn<PickerDeps["nameAccessAsked"]>(async () => false),
+		markNameAccessAsked: vi.fn<PickerDeps["markNameAccessAsked"]>(async () => undefined),
 	};
 }
 
@@ -96,5 +99,54 @@ describe("pickForUpload (FR-005-01, NFR-005-04)", () => {
 		});
 
 		expect(await pickForUpload(d)).toEqual({ kind: "picked", files: [{ ...PICKED, modifiedAt: null }] });
+	});
+});
+
+describe("original file names on Android (FR-009-05, ADR-009-01)", () => {
+	it("asks for photo access once, before the first Android pick", async () => {
+		const d = deps("android", "granted");
+
+		await pickForUpload(d);
+
+		expect(d.requestNameAccess).toHaveBeenCalledTimes(1);
+		expect(d.markNameAccessAsked).toHaveBeenCalledTimes(1);
+		expect(d.requestNameAccess.mock.invocationCallOrder[0]).toBeLessThan(d.pickNative.mock.invocationCallOrder[0]);
+	});
+
+	it("doesn't ask again once asked", async () => {
+		const d = deps("android", "granted");
+		d.nameAccessAsked.mockResolvedValue(true);
+
+		await pickForUpload(d);
+
+		expect(d.requestNameAccess).not.toHaveBeenCalled();
+		expect(d.pickNative).toHaveBeenCalled();
+	});
+
+	it("picks anyway when access is refused or the request fails (S-009-13)", async () => {
+		const refused = deps("android", "granted");
+		refused.requestNameAccess.mockResolvedValue({ granted: false });
+		const failing = deps("android", "granted");
+		failing.requestNameAccess.mockRejectedValue(new Error("boom"));
+
+		expect(await pickForUpload(refused)).toEqual({ kind: "picked", files: [PICKED] });
+		expect(await pickForUpload(failing)).toEqual({ kind: "picked", files: [PICKED] });
+		expect(failing.markNameAccessAsked).toHaveBeenCalled();
+	});
+
+	it("doesn't ask without the location permission, since nothing is picked", async () => {
+		const d = deps("android", "denied");
+
+		await pickForUpload(d);
+
+		expect(d.requestNameAccess).not.toHaveBeenCalled();
+	});
+
+	it("never asks on iOS, whose picker already gives the original name", async () => {
+		const d = deps("ios", "granted");
+
+		await pickForUpload(d);
+
+		expect(d.requestNameAccess).not.toHaveBeenCalled();
 	});
 });

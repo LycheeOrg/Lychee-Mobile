@@ -14,12 +14,12 @@
 		</div>
 
 		<div v-show="chromeVisible" class="overlay">
-			<IonButton fill="clear" color="light" aria-label="Close" @click="emit('close')">
+			<IonButton class="overlay-button" fill="clear" aria-label="Close" @click="emit('close')">
 				<IonIcon slot="icon-only" :icon="close" />
 			</IonButton>
 			<span class="title">{{ photos[activeIndex]?.title ?? "" }}</span>
 			<span class="counter">{{ counterText(activeIndex, total, photos.length) }}</span>
-			<IonButton v-if="infoAllowed" fill="clear" color="light" aria-label="Info" @click="openInfo">
+			<IonButton v-if="infoAllowed" class="overlay-button" fill="clear" aria-label="Info" @click="openInfo">
 				<IonIcon slot="icon-only" :icon="informationCircleOutline" />
 			</IonButton>
 		</div>
@@ -221,6 +221,12 @@ onBeforeUnmount(() => {
 	padding: env(safe-area-inset-top) 12px 0 0;
 	background: linear-gradient(rgba(0, 0, 0, 0.6), transparent);
 	color: #fff;
+}
+
+/* FR-009-02: white on black in both themes; Ionic's "light" is dark grey in dark mode. */
+.overlay-button {
+	--color: #fff;
+	filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
 }
 
 .title {

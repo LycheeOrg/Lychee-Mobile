@@ -18,7 +18,6 @@ function setup({
 	methods = { oauth: false, passkeys: false } as OtherMethods,
 	stored = null as Credentials | null,
 } = {}) {
-	let clock = 1_000_000;
 	const deps = {
 		signIn: vi.fn(async (_server: string, _username: string, _password: string): Promise<SignInResult> => signIns.shift() ?? { kind: "failed" }),
 		readAccount: vi.fn(async () => read.shift() ?? { kind: "failed" as const }),
@@ -29,12 +28,8 @@ function setup({
 			load: vi.fn(async (_server: string) => stored),
 			forget: vi.fn(async () => undefined),
 		},
-		now: () => clock,
 	};
-	const advance = (ms: number) => {
-		clock += ms;
-	};
-	return { store: createAccountStore(deps), deps, advance };
+	return { store: createAccountStore(deps), deps };
 }
 
 describe("refresh (FR-002-03)", () => {
@@ -223,8 +218,8 @@ describe("reauthenticate (FR-006-02, FR-006-03, NFR-006-02)", () => {
 		expect(deps.signIn).toHaveBeenCalledTimes(1);
 	});
 
-	it("doesn't log in again within 60 s of a successful silent login", async () => {
-		const { store, deps, advance } = setup({
+	it("logs in again right after a successful silent login (FR-009-03, S-009-07)", async () => {
+		const { store, deps } = setup({
 			stored: STORED,
 			signIns: [
 				{ kind: "ok", account: ACCOUNT },
@@ -233,12 +228,17 @@ describe("reauthenticate (FR-006-02, FR-006-03, NFR-006-02)", () => {
 		});
 		await store.reauthenticate(SERVER);
 
-		advance(59_000);
-		expect(await store.reauthenticate(SERVER)).toBe(false);
-		advance(1_000);
 		expect(await store.reauthenticate(SERVER)).toBe(true);
 
 		expect(deps.signIn).toHaveBeenCalledTimes(2);
+	});
+
+	it("reports why a silent login failed, for Settings (FR-009-04)", async () => {
+		const { store } = setup({ stored: STORED, signIns: [{ kind: "unreachable" }] });
+
+		await store.reauthenticate(SERVER);
+
+		expect(store.state.failure).toBe("unreachable");
 	});
 
 	it("forgets a rejected password and asks to sign in again (S-006-04)", async () => {
@@ -267,5 +267,18 @@ describe("reauthenticate (FR-006-02, FR-006-03, NFR-006-02)", () => {
 		await store.signIn(SERVER, "photographer", "new password");
 
 		expect(store.state.passwordRejected).toBeNull();
+	});
+});
+
+describe("storedUsername (FR-009-04)", () => {
+	it("gives the username stored for the server", async () => {
+		const { store, deps } = setup({ stored: { username: "photographer", password: PASSWORD } });
+
+		expect(await store.storedUsername(SERVER)).toBe("photographer");
+		expect(deps.credentials.load).toHaveBeenCalledWith(SERVER);
+	});
+
+	it("gives null without stored credentials", async () => {
+		expect(await setup().store.storedUsername(SERVER)).toBeNull();
 	});
 });

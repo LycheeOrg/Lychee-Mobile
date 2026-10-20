@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 009 (2026-10-20):** the Sign in page is gone; username and password are on Settings with one Save button (FR-009-04).
+
 ## Overview
 Once a server is connected (Feature 001), the user can sign in with their Lychee account so later features can show private albums and upload. This feature adds the sign-in call, keeps the user signed in across launches through Lychee's own session and remember cookies (ADR-002-01), shows who is signed in, and signs out. Signing in is optional: a guest sees what the server shows guests. It reuses Feature 001's transport: native HTTP with the native cookie store and the `XSRF-TOKEN` header (ADR-001-01). Affected layers: `src/services/lycheeHttp.ts` (POST, clearing cookies), a new auth service and account store, a sign-in page (`/login`), `HomePage.vue`, `App.vue`, the router.
 

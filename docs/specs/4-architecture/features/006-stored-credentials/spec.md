@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 009 (2026-10-20):** launch also logs in when the account can't be read, the 60 s cooldown (NFR-006-02) is removed, and a rejected password opens Settings instead of the Sign in page (FR-009-03).
+
 ## Overview
 Owner request (2026-10-19): "let's change this so the username/password are stored securely, and they are used to log in and get a fresh cookie, don't use 'remember me' at all". The app signs in without `remember_me`, keeps the username and password in the platform's secure storage (`@aparajita/capacitor-secure-storage`: iOS Keychain, Android Keystore-encrypted storage; ADR-006-01), and logs in again silently whenever Lychee's 2-hour session is gone: at launch and on the first 401 of a gallery or upload call, which is then sent again once. A rejected password forgets the credentials and opens the sign-in page. Supersedes ADR-002-01.
 

@@ -2,7 +2,7 @@
 
 _Linked specification:_ [spec.md](spec.md)  
 _Linked tasks:_ [tasks.md](tasks.md)  
-_Status:_ Testing  
+_Status:_ Complete  
 _Last updated:_ 2026-10-20
 
 > Guardrail: Keep this plan traceable back to the governing spec. Reference FR/NFR/Scenario IDs from `spec.md` where relevant, log any new high- or medium-impact questions in the feature's [open-questions.md](open-questions.md), and assume clarifications are resolved only when the spec's normative sections and, where applicable, ADRs under `docs/specs/6-decisions/` have been updated.
@@ -76,9 +76,9 @@ Run 2026-10-20 by the agent.
 
 ## Drift Gate Report
 
-Run 2026-10-20 by the agent, with the device checks partly done.
+Run 2026-10-20 by the agent; device checks completed by the owner the same day.
 
-**Preconditions:** T-008-01 … 08, 10, 11 `[x]`; T-008-09 partly confirmed (Android). `npx vp check`, `npx vp run typecheck`, `npx vp test` (41 files, 575 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green. No dependency or native change.
+**Preconditions:** all tasks `[x]` (T-008-01 … 11). `npx vp check`, `npx vp run typecheck`, `npx vp test` (41 files, 575 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green. No dependency or native change.
 
 | Requirement | Code | Evidence |
 |-------------|------|----------|
@@ -95,8 +95,9 @@ Run 2026-10-20 by the agent, with the device checks partly done.
 | NFR-008-04 | no dependency | `package.json` unchanged |
 | NFR-008-05 | provider layer and attribution | `gallery.test.ts`, `PhotoInfoPanel.test.ts` |
 
-**Not verified yet:** iPhone (S-008-01 … 12 on iOS, `maps://`), swiping photos with the sheet at half height (S-008-02 on a device), server-side switches on a real server (S-008-04 … 06, 08).
+**Device checks:** all passed, as reported by the owner on 2026-10-20 ("everything is tested"): the iPhone incl. `maps://`, swiping with the sheet at half height, and the rest of S-008-01 … 12. The agent didn't see these runs; the evidence is the owner's report.
 
 **Divergences:** `lycheeHttp` drops the bare `?` on parameterless requests (cross-feature, harmless); the EXIF section is hidden when all values are empty (FR-008-04 updated).
 
 **Lessons:** hand-computed expectations for map maths need an independent check; small zooms wrap tiles, so tests must pick tiles by position, not URL.
+- 2026-10-20: owner reported all remaining device checks passed; feature closed.
