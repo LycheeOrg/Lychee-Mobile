@@ -139,6 +139,7 @@ public class OriginalMediaPlugin extends Plugin {
         }
         JSArray files = new JSArray();
         for (Uri uri : urisOf(data)) {
+            keepAccess(uri);
             files.put(describe(uri));
         }
         JSObject picked = new JSObject();
@@ -193,6 +194,32 @@ public class OriginalMediaPlugin extends Plugin {
             }
         }
         call.resolve();
+    }
+
+    /** NC-012-03: gives back the read access {@link #keepAccess} took (FR-012-04). */
+    @PluginMethod
+    public void releaseAccess(PluginCall call) {
+        String uri = call.getString("uri");
+        if (uri != null && uri.startsWith("content://")) {
+            try {
+                getContext().getContentResolver().releasePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (SecurityException e) {
+                // Already released, or never persisted.
+            }
+        }
+        call.resolve();
+    }
+
+    /**
+     * NC-012-03, FR-012-04: keeps read access to a picked item after the app is closed, so an
+     * unfinished upload can continue on the next start; released once Lychee has it.
+     */
+    private void keepAccess(Uri uri) {
+        try {
+            getContext().getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException e) {
+            // Not persistable: the upload still works while the app runs.
+        }
     }
 
     /** NC-011-01: whether a camera app can take a photo for the app. */

@@ -12,8 +12,10 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { IonApp, IonRouterOutlet, useBackButton } from "@ionic/vue";
 import UploadSheet from "@/components/UploadSheet.vue";
 import { accountStore } from "@/stores/account";
+import { keepAliveRunner } from "@/stores/keepAlive";
 import { pendingCaptures } from "@/stores/pendingCaptures";
 import { session } from "@/stores/session";
+import { uploadQueue } from "@/stores/uploadQueue";
 import { rootBackHandler } from "@/utils/backButton";
 
 const router = useRouter();
@@ -26,6 +28,13 @@ watch(
 			void router.push("/settings");
 		}
 	},
+);
+
+// FR-012-03: keep the app alive while an upload run lasts.
+watch(
+	() => uploadQueue.state,
+	(queue) => void keepAliveRunner.sync(queue),
+	{ deep: true },
 );
 
 // FR-009-01: above the router's handler (0), below overlays (100) and selection mode (15).

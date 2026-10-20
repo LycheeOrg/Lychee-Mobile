@@ -14,12 +14,12 @@ Candidate features for the proof of concept (each starts with a spec under `feat
 | Feature ID | Name | Notes |
 |------------|------|-------|
 | — | GPS for Android camera photos | Follow-up of Feature 011: the single-shot capture mode leaves the location out; options include adding the phone's location (Q-011-02 B) or another way to reach the full camera. |
-| 012 | Background uploads | Uploads continue after the app closes: Android `WorkManager`/foreground service, iOS background `URLSession`; takes over Feature 011's pending photos (Q-011-04). |
 
 ## Completed Features
 
 | Feature ID | Name | Completed | Notes |
 |------------|------|-----------|-------|
+| 012 | Background uploads | 2026-10-20 | Progress ring in every toolbar opening the upload sheet; Android foreground service (`dataSync`) with a progress notification keeps the queue running in other apps, iOS background time (≈30 s) then retry on return (ADR-012-01); every queued file kept until uploaded (Android persistable access, iOS copies). 707 Vitest tests; owner confirmed on devices. See `features/012-background-uploads/`. |
 | 011 | Camera upload | 2026-10-20 | Take photo in the "+" menu through the app's own native code (ADR-011-01): Android the camera app's single-shot mode, file uploaded untouched, no GPS yet (follow-up on the backlog); iOS Apple's camera with metadata and GPS. Photos kept in app storage until Lychee accepted them, re-queued after launch and on resume, Delete photo for stuck ones. 681 Vitest tests; owner confirmed on Android and iOS. See `features/011-camera-upload/`. |
 | 010 | Album creation | 2026-10-20 | Toolbar "+" (dropdown) with Upload photos and Create album, as in the web UI; Create album where the server allows it (`can_edit`), top level or inside regular albums, opens the new album; `POST Album` with the plain-text ID and 409 retries. 649 Vitest tests; owner confirmed on devices. See `features/010-album-creation/`. |
 | 009 | Usability fixes | 2026-10-20 | Back on the album list closes the app; white viewer buttons; launch race fixed (the first page waiting for the launch starts it) and stored credentials tried before any sign-in screen, no 60 s cooldown; Settings holds server, username and password with one Save, Sign in page removed; Android uploads keep the camera's file name with photo access (ADR-009-01). 603 Vitest tests; owner confirmed on Android and iOS. PR #12. See `features/009-usability-fixes/`. |

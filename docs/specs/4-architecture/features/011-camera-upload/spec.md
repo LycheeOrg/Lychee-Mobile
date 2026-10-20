@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 012 (2026-10-20):** the pending list now holds every queued file, with a cleanup kind per file (FR-012-04).
+
 ## Overview
 A **Take photo** item in the toolbar's "+" menu (Feature 010) opens the phone's own camera; the photo it returns joins the upload queue (Feature 005) for the album on screen, or Unsorted from the album list. The file keeps the camera's EXIF (make, model, lens, exposure, date) and GPS where the platform can provide it (NFR-011-01). On Android the camera app's single-shot capture mode writes the photo straight into the app's storage (reduced camera modes, no location; Q-011-05). iOS's camera hands over an image and its metadata, which the app writes into a JPEG together with the phone's location (Q-011-01, Q-011-02).
 

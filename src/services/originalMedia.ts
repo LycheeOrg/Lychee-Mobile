@@ -26,6 +26,8 @@ export type OriginalMediaPlugin = {
 	capture: (options: { name: string }) => Promise<NativePickedFile>;
 	deleteCapture: (options: { path: string }) => Promise<void>;
 	hasCamera: () => Promise<{ available: boolean }>;
+	/** NC-012-03: gives back the persistable read access `pick()` took for an item (FR-012-04). */
+	releaseAccess: (options: { uri: string }) => Promise<void>;
 };
 
 export const OriginalMedia = registerPlugin<OriginalMediaPlugin>("OriginalMedia");

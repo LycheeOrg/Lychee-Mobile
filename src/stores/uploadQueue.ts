@@ -57,6 +57,8 @@ export function createUploadQueue(deps: QueueDeps) {
 		entries: [] as QueueEntry[],
 		finishedRuns: 0,
 		lastDoneAlbums: new Set<string | null>(),
+		/** FR-012-01: the files of the current run, added since the queue was last idle. */
+		runIds: [] as number[],
 	});
 	let nextId = 1;
 	let running: Promise<void> | null = null;
@@ -112,10 +114,18 @@ export function createUploadQueue(deps: QueueDeps) {
 	}
 
 	function add(files: PickedFile[], albumId: string | null): void {
-		for (const file of files) {
-			state.entries.push({ id: nextId++, file, albumId, state: "waiting", sent: 0, result: null });
-		}
+		const idle = remaining() === 0;
+		const ids = files.map(() => nextId++);
+		files.forEach((file, index) => {
+			state.entries.push({ id: ids[index], file, albumId, state: "waiting", sent: 0, result: null });
+		});
+		joinRun(ids, idle);
 		start();
+	}
+
+	/** FR-012-01: an idle queue starts a new run; a busy one takes the files into its run. */
+	function joinRun(ids: number[], idle: boolean): void {
+		state.runIds = idle ? ids : [...state.runIds, ...ids];
 	}
 
 	function retry(id: number): void {
@@ -123,6 +133,7 @@ export function createUploadQueue(deps: QueueDeps) {
 		if (entry === undefined || entry.state !== "failed") {
 			return;
 		}
+		joinRun([entry.id], remaining() === 0);
 		Object.assign(entry, { state: "waiting", sent: 0, result: null });
 		start();
 	}

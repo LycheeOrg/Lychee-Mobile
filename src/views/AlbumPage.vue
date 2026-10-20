@@ -9,6 +9,7 @@
 				<IonTitle>{{ selection.state.active ? selectionTitle(selection.count()) : state.title }}</IonTitle>
 				<IonButtons v-if="!selection.state.active" slot="end">
 					<IonButton v-if="canSelect" @click="selection.start()">Select</IonButton>
+					<UploadRing />
 					<AddButton v-if="state.status === 'ready' && hasItems(addMenu)" :menu="addMenu" @created="openCreated" />
 				</IonButtons>
 			</IonToolbar>
@@ -152,6 +153,7 @@ import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import PhotoGrid from "@/components/PhotoGrid.vue";
 import PhotoViewer from "@/components/PhotoViewer.vue";
 import AddButton from "@/components/AddButton.vue";
+import UploadRing from "@/components/UploadRing.vue";
 import type { PhotoTile } from "@/services/galleryParsers";
 import { addMenuFor, hasItems } from "@/stores/addMenu";
 import { createAlbumPage } from "@/stores/albumPage";

@@ -15,6 +15,8 @@
 
 > **Amended by Feature 009 (2026-10-20):** Android uploads use the camera's file name from MediaStore when the user grants photo access (FR-009-05, ADR-009-01).
 
+> **Amended by Feature 012 (2026-10-20):** the upload sheet no longer opens by itself; a progress ring in every toolbar opens it, uploads continue in the background (Android) or for about 30 s (iOS), and every queued file is kept until uploaded (FR-012-01 … 04).
+
 ## Overview
 A user who may upload picks photos and videos on the phone and uploads them, unchanged, into the album they are looking at (or into Unsorted from the album list). Files come from the native photo pickers through `@capawesome/capacitor-file-picker` (ADR-005-01), so the exact original bytes, including GPS and other metadata, reach Lychee (NFR-005-04). Lychee's upload API takes files in chunks (`POST /api/v2/Photo`, multipart); the app reads each picked file one chunk at a time and sends it through the native HTTP transport (ADR-001-01) with the session and XSRF token, while a sheet shows each file's progress and result.
 
