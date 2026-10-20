@@ -1,6 +1,6 @@
 # ADR-0003: Proof-of-concept identity
 
-- **Status:** Accepted
+- **Status:** Accepted; repository transferred to LycheeOrg on 2026-10-20 (see Update); app identifier superseded by ADR-0004
 - **Date:** 2026-10-19
 - **Related features/specs:** repository setup (no feature)
 - **Related open questions:** none (decided by the owner when creating the repository)
@@ -37,6 +37,12 @@ None beyond ADR-0002's secret handling.
 ## Operational Impact
 
 Migration checklist (when the PoC is accepted): transfer the repository, move or recreate the store listings, change `appId` in `capacitor.config.ts` and the native projects if the identifier changes, rotate secrets into the organisation.
+
+## Update – 2026-10-20
+
+The repository was transferred to [`LycheeOrg/Lychee-Mobile`](https://github.com/LycheeOrg/Lychee-Mobile); history, issues and pull requests moved with it, and the old URL redirects. Local clones point `origin` at the new URL (`git remote set-url origin https://github.com/LycheeOrg/Lychee-Mobile.git`).
+
+The app identifier changed to `dev.lycheeorg.mobile` before any store release (ADR-0004). Still open on the migration checklist above: which Apple and Google accounts hold the listings, the certificates repository used by fastlane match, and moving the release secrets into the organisation.
 
 ## Links
 

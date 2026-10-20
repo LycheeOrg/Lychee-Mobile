@@ -54,7 +54,7 @@ How the pieces of Lychee-Mobile relate. Update it whenever modules, services, st
   - `src/utils/photoActionMessages.ts`: selection title, delete confirmation and failures, download progress and summary (Feature 007).
   - `src/utils/photoVariant.ts` (`displayVariant()`, `zoomVariant()`, `videoSource()`, `videoPoster()`), `viewerSlides.ts` (`counterText()`, `shouldLoadMore()`), `pressAndHold.ts`, `singleTap.ts` (Feature 004).
   - `src/theme/variables.css`: Ionic colour variables.
-- **Native shells**: Capacitor 8 (`capacitor.config.ts`, app ID `com.mlapaglia.lycheemobile`, ADR-0003).
+- **Native shells**: Capacitor 8 (`capacitor.config.ts`, app ID `dev.lycheeorg.mobile`, ADR-0004).
   - `android/`: Gradle project; `android/app/build.gradle` reads `VERSION_NAME`, `VERSION_CODE` and the `ANDROID_KEY*` variables for release builds.
   - `ios/`: Xcode project using Swift Package Manager (`ios/App/CapApp-SPM`); app-local plugin `OriginalCameraPlugin.swift` (camera, metadata, GPS via `CLLocationManager`, `Application Support/captures/`) registered by `MainViewController` (the storyboard's bridge view controller) (Feature 011, ADR-011-01); `UploadKeepAlivePlugin.swift` (`beginBackgroundTask` around a run) (Feature 012); usage strings for camera, location when in use and adding photos.
   - Libraries beyond the starter: `swiper` `14.3.0` (ADR-004-01), `@capawesome/capacitor-file-picker` `8.1.0` (ADR-005-01), `@aparajita/capacitor-secure-storage` `8.0.1` (ADR-006-01), `@capacitor/file-transfer` `2.0.6`, `@capacitor-community/media` `9.1.0` (iOS only), `@capacitor/filesystem` `8.1.5` (ADR-007-01), all pinned.

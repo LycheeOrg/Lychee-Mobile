@@ -8,7 +8,8 @@ Numbering convention (same as LycheeOrg/Lychee): a decision raised by a feature 
 |-----|----------|------------------------------------|
 | [ADR-0001](ADR-0001-capacitor-ionic-vue.md) | Accepted | Capacitor + Ionic Vue, with Lychee's frontend toolchain (Vite+, Oxlint, Oxfmt, Vitest, vue-tsc) |
 | [ADR-0002](ADR-0002-release-pipeline.md) | Accepted | fastlane on GitHub Actions: alpha to TestFlight and Google Play internal testing on every push to `main`, production on published GitHub releases |
-| [ADR-0003](ADR-0003-proof-of-concept-identity.md) | Accepted | Proof of concept under a personal account: public MIT repository, app ID `com.mlapaglia.lycheemobile`, moved to LycheeOrg after the PoC |
+| [ADR-0003](ADR-0003-proof-of-concept-identity.md) | Accepted | Proof of concept under a personal account: public MIT repository (transferred to `LycheeOrg/Lychee-Mobile` on 2026-10-20); its app ID `com.mlapaglia.lycheemobile` is superseded by ADR-0004 |
+| [ADR-0004](ADR-0004-lycheeorg-app-identifier.md) | Accepted | App identifier `dev.lycheeorg.mobile` (LycheeOrg), changed before any store release; supersedes ADR-0003's identifier |
 | [ADR-001-01](ADR-001-01-native-http-transport.md) | Accepted | CapacitorHttp with the native cookie store; Lychee calls load `{server}/` for the session and `XSRF-TOKEN`, then send JSON headers and `X-XSRF-TOKEN` |
 | [ADR-001-02](ADR-001-02-local-network-plain-http.md) | Accepted | Plain http only for local-network hosts, enforced by the app; iOS `NSAllowsLocalNetworking`, Android cleartext allowed at OS level |
 | [ADR-002-01](ADR-002-01-session-cookie-sign-in.md) | Superseded by ADR-006-01 | Stay signed in through Lychee's session and remember cookies in the native cookie store; no stored password or API token |

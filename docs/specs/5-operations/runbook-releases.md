@@ -23,7 +23,7 @@ Until the secrets below exist, each release job prints a notice and skips, so th
 
 ### Apple (iOS)
 1. Apple Developer Program membership; note the **Team ID** → secret `APPLE_TEAM_ID`.
-2. App Store Connect → Apps → New App with bundle ID `com.mlapaglia.lycheemobile` (register the identifier first under Certificates, Identifiers & Profiles).
+2. App Store Connect → Apps → New App with bundle ID `dev.lycheeorg.mobile` (ADR-0004; register the identifier first under Certificates, Identifiers & Profiles).
 3. App Store Connect → Users and Access → Integrations → App Store Connect API → new key with the **App Manager** role:
    - `ASC_KEY_ID` (Key ID), `ASC_ISSUER_ID` (Issuer ID)
    - `ASC_KEY_P8_BASE64`: `base64 -i AuthKey_XXXX.p8 | pbcopy`
@@ -35,7 +35,7 @@ Until the secrets below exist, each release job prints a notice and skips, so th
 5. TestFlight → Internal Testing: create a group and add testers.
 
 ### Google (Android)
-1. Google Play Console developer account; create the app with package `com.mlapaglia.lycheemobile`.
+1. Google Play Console developer account; create the app with package `dev.lycheeorg.mobile` (ADR-0004).
 2. Upload keystore (keep a backup outside the repository):
    ```sh
    keytool -genkeypair -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 4096 -validity 10000
