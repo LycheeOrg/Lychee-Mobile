@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { createGallery, DELETE_TIMEOUT_MS, GALLERY_TIMEOUT_MS } from "@/services/gallery";
+import { CREATE_ALBUM_ATTEMPTS, createGallery, DELETE_TIMEOUT_MS, GALLERY_TIMEOUT_MS } from "@/services/gallery";
 import type { LycheeHttpDeps } from "@/services/lycheeHttp";
 import albums from "@/services/__fixtures__/lychee-7.11.1/albums.json";
 import albumHead from "@/services/__fixtures__/lychee-7.11.1/album-head.json";
@@ -20,6 +20,7 @@ import wrongPassword from "@/services/__fixtures__/lychee-7.11.1/error-wrong-pas
 import error422Delete from "@/services/__fixtures__/lychee-7.11.1/error-422-delete.json";
 import photoAlbums from "@/services/__fixtures__/lychee-7.11.1/photo-albums.json";
 import mapProvider from "@/services/__fixtures__/lychee-7.11.1/map-provider.json";
+import error422Album from "@/services/__fixtures__/lychee-7.11.1/error-422-album.json";
 
 const SERVER = "https://photos.example.com";
 
@@ -280,5 +281,76 @@ describe("map provider (API-008-03)", () => {
 		await gallery.mapProvider();
 
 		expect(urlsOf(deps)).toHaveLength(2);
+	});
+});
+
+describe("creating albums (FR-010-03, API-010-01)", () => {
+	it("creates an album inside a parent and returns its id (S-010-03)", async () => {
+		const deps = server({ "POST Album": () => json("n3wAlbum1d") });
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", "a1")).toEqual({ kind: "ok", id: "n3wAlbum1d" });
+		const init = deps.fetch.mock.calls.find((call) => call[1]?.method === "POST")?.[1];
+		expect(JSON.parse(String(init?.body))).toEqual({ title: "Summer 2026", parent_id: "a1" });
+	});
+
+	it("reads the id Lychee sends as plain text, not JSON (AlbumController returns a bare string)", async () => {
+		const deps = server({
+			"POST Album": () => new Response("b8Kq2Lm4Np6Rs8Tu0Vw2Xy4Z", { status: 201, headers: { "Content-Type": "text/html; charset=UTF-8" } }),
+		});
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", null)).toEqual({ kind: "ok", id: "b8Kq2Lm4Np6Rs8Tu0Vw2Xy4Z" });
+	});
+
+	it("rejects a plain-text answer that isn't an id", async () => {
+		const deps = server({ "POST Album": () => new Response("<html>Login</html>", { status: 200 }) });
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", null)).toEqual({ kind: "failed" });
+	});
+
+	it("creates at the top level with a null parent (S-010-02)", async () => {
+		const deps = server({ "POST Album": () => json("n3wAlbum1d") });
+
+		await createGallery(SERVER, deps).createAlbum("Summer 2026", null);
+
+		const init = deps.fetch.mock.calls.find((call) => call[1]?.method === "POST")?.[1];
+		expect(JSON.parse(String(init?.body))).toEqual({ title: "Summer 2026", parent_id: null });
+	});
+
+	it("retries while the server's album lock is busy (409, S-010-08)", async () => {
+		const answers = [json({ message: "busy" }, 409), json({ message: "busy" }, 409), json("n3wAlbum1d")];
+		const deps = server({ "POST Album": () => answers.shift() ?? json({}, 500) });
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", null)).toEqual({ kind: "ok", id: "n3wAlbum1d" });
+		expect(deps.fetch.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(3);
+	});
+
+	it("gives up after five retries", async () => {
+		const deps = server({ "POST Album": () => json({ message: "busy" }, 409) });
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", null)).toEqual({ kind: "busy" });
+		expect(deps.fetch.mock.calls.filter((call) => call[1]?.method === "POST")).toHaveLength(CREATE_ALBUM_ATTEMPTS);
+		expect(CREATE_ALBUM_ATTEMPTS).toBe(6);
+	});
+
+	it.each([
+		["401", () => json(error401, 401), { kind: "unauthenticated" }],
+		["403 (S-010-09)", () => json(error403, 403), { kind: "forbidden" }],
+		["422", () => json(error422Album, 422), { kind: "invalid", message: "The title field must not be greater than 100 characters." }],
+		["500", () => json({ message: "Server error" }, 500), { kind: "failed" }],
+		["an answer that isn't an id", () => json({ id: "x" }), { kind: "failed" }],
+		["a network error", () => Promise.reject(new TypeError("Failed to fetch")), { kind: "unreachable" }],
+	] as [string, Route, object][])("maps %s", async (_, route, result) => {
+		const deps = server({ "POST Album": route });
+
+		expect(await createGallery(SERVER, deps).createAlbum("Summer 2026", null)).toEqual(result);
+	});
+
+	it("gives up after the timeout", async () => {
+		vi.useFakeTimers();
+		const result = createGallery(SERVER, server({ "POST Album": never })).createAlbum("Summer 2026", null);
+
+		await vi.advanceTimersByTimeAsync(GALLERY_TIMEOUT_MS);
+
+		expect(await result).toEqual({ kind: "unreachable" });
 	});
 });

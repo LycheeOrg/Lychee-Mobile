@@ -9,7 +9,7 @@
 				<IonTitle>{{ selection.state.active ? selectionTitle(selection.count()) : state.title }}</IonTitle>
 				<IonButtons v-if="!selection.state.active" slot="end">
 					<IonButton v-if="canSelect" @click="selection.start()">Select</IonButton>
-					<UploadButton v-if="state.status === 'ready' && uploadTarget !== null" :target="uploadTarget" />
+					<AddButton v-if="state.status === 'ready' && hasItems(addMenu)" :menu="addMenu" @created="openCreated" />
 				</IonButtons>
 			</IonToolbar>
 		</IonHeader>
@@ -151,8 +151,9 @@ import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import PhotoGrid from "@/components/PhotoGrid.vue";
 import PhotoViewer from "@/components/PhotoViewer.vue";
-import UploadButton from "@/components/UploadButton.vue";
+import AddButton from "@/components/AddButton.vue";
 import type { PhotoTile } from "@/services/galleryParsers";
+import { addMenuFor, hasItems } from "@/stores/addMenu";
 import { createAlbumPage } from "@/stores/albumPage";
 import { downloadRun } from "@/stores/downloadRun";
 import { enabledActions, photoActionsFor } from "@/stores/photoRights";
@@ -189,6 +190,11 @@ const canSelect = computed(() => state.status === "ready" && state.photos.length
 // Ionic keeps earlier pages alive; only the visible one answers Back and shows alerts.
 let visible = false;
 
+// FR-010-02: the "+" menu of this album.
+const addMenu = computed(() => addMenuFor({ id: albumId, kind: state.kind, canUpload: state.canUpload, canEdit: state.canEdit }));
+// FR-010-03: a sub-album created from here shows when the user comes back.
+let stale = false;
+
 // FR-005-05: reload after uploads into this album.
 watch(
 	() => uploadQueue.state.finishedRuns,
@@ -205,8 +211,9 @@ const viewerIndex = ref(0);
 
 // Loaded on first entry; Back keeps the page and its scroll position (FR-003-02).
 onIonViewWillEnter(async () => {
-	if (!loaded || state.status === "sign_in") {
+	if (!loaded || state.status === "sign_in" || stale) {
 		loaded = true;
+		stale = false;
 		await load();
 	}
 });
@@ -336,6 +343,12 @@ function retryDownloads(): void {
 	if (ctx !== null) {
 		downloadRun.retryFailed(ctx);
 	}
+}
+
+/** FR-010-03: opens the new sub-album. */
+function openCreated(id: string): void {
+	stale = true;
+	open(id);
 }
 
 function open(id: string): void {

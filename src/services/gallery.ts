@@ -29,6 +29,9 @@ export const GALLERY_TIMEOUT_MS = 10_000;
 /** FR-007-03: deleting many photos can take longer than browsing. */
 export const DELETE_TIMEOUT_MS = 30_000;
 
+/** FR-010-03: the first try plus five retries while the server's album lock is busy (409), as the web client does. */
+export const CREATE_ALBUM_ATTEMPTS = 6;
+
 /** FR-003-04: `Album::head`, `Album::albums` and `Album::photos` arrived in 7.1.0. */
 export const MIN_BROWSING_VERSION = "7.1.0";
 
@@ -48,6 +51,12 @@ export type DownloadRequest = { url: string; headers: Record<string, string> };
 /** DO-008-03: `unsupported` is Lychee before 7.4.0 (404). */
 export type PhotoAlbumsResult = { kind: "ok"; albums: readonly PhotoAlbum[] } | { kind: "unsupported" | "unauthenticated" | "failed" };
 
+/** DO-010-03. */
+export type CreateAlbumResult =
+	| { kind: "ok"; id: string }
+	| { kind: "invalid"; message: string }
+	| { kind: "busy" | "unauthenticated" | "forbidden" | "unreachable" | "failed" };
+
 export type Gallery = {
 	root: () => Promise<GalleryResult<RootAlbums>>;
 	settings: () => Promise<GalleryResult<GallerySettings>>;
@@ -63,6 +72,8 @@ export type Gallery = {
 	photoAlbums: (photoId: string) => Promise<PhotoAlbumsResult>;
 	/** API-008-03: loaded once per server; `null` when it can't be read. */
 	mapProvider: () => Promise<MapProvider | null>;
+	/** FR-010-03: `parentId` null creates a top-level album. */
+	createAlbum: (title: string, parentId: string | null) => Promise<CreateAlbumResult>;
 };
 
 /** Failures named by Lychee's `exception` field, whatever the status. */
@@ -72,6 +83,7 @@ const FAILURE_BY_EXCEPTION: Record<string, GalleryFailure> = {
 };
 const FAILURE_BY_STATUS: Record<number, GalleryFailure> = { 401: "unauthenticated", 403: "forbidden", 404: "not_found" };
 const DELETE_FAILURE_BY_STATUS: Record<number, DeleteResult["kind"]> = { 401: "unauthenticated", 403: "forbidden" };
+const CREATE_FAILURE_BY_STATUS: Record<number, "busy" | "unauthenticated" | "forbidden"> = { 409: "busy", 401: "unauthenticated", 403: "forbidden" };
 const ALBUMS_FAILURE_BY_STATUS: Record<number, "unsupported" | "unauthenticated"> = { 404: "unsupported", 401: "unauthenticated" };
 const UNLOCK_FAILURE_BY_STATUS: Record<number, UnlockFailure> = { 403: "wrong_password", 429: "throttled" };
 
@@ -101,6 +113,7 @@ export function createGallery(server: string, deps: LycheeHttpDeps = nativeDeps)
 			};
 		},
 		photoAlbums: (photoId) => photoAlbums(http, photoId),
+		createAlbum: (title, parentId) => createAlbum(http, title, parentId),
 		async mapProvider() {
 			if (provider === null) {
 				const result = await load(http, "Map::provider", {}, parseMapProvider);
@@ -165,6 +178,62 @@ async function deletePhotos(http: LycheeHttp, photoIds: string[], fromId: string
 	} catch {
 		return { kind: "unreachable" };
 	}
+}
+
+async function createAlbum(http: LycheeHttp, title: string, parentId: string | null): Promise<CreateAlbumResult> {
+	for (let attempt = 1; attempt <= CREATE_ALBUM_ATTEMPTS; attempt++) {
+		const result = await createAlbumOnce(http, title, parentId);
+		if (result.kind !== "busy") {
+			return result;
+		}
+	}
+	return { kind: "busy" };
+}
+
+async function createAlbumOnce(http: LycheeHttp, title: string, parentId: string | null): Promise<CreateAlbumResult> {
+	try {
+		const result = await withTimeout(async (signal): Promise<CreateAlbumResult> => {
+			const response = await http.post("Album", { title, parent_id: parentId }, signal);
+			const text = await response.text();
+			const payload = parseJson(text);
+			if (response.ok) {
+				const id = albumIdOf(payload, text);
+				return id === null ? { kind: "failed" } : { kind: "ok", id };
+			}
+			if (response.status === 422) {
+				return { kind: "invalid", message: messageOf(payload) };
+			}
+			return { kind: CREATE_FAILURE_BY_STATUS[response.status] ?? "failed" };
+		}, GALLERY_TIMEOUT_MS);
+		return result === TIMED_OUT ? { kind: "unreachable" } : result;
+	} catch {
+		return { kind: "unreachable" };
+	}
+}
+
+/** Lychee album IDs: 24 URL-safe characters (`RandomID`); a little slack for other formats. */
+const ALBUM_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * FR-010-03: `AlbumController::createAlbum` returns the ID as a bare string,
+ * which Laravel sends as plain text, not JSON; accept both.
+ */
+function albumIdOf(payload: unknown, text: string): string | null {
+	const id = typeof payload === "string" ? payload : text.trim();
+	return ALBUM_ID.test(id) ? id : null;
+}
+
+function parseJson(text: string): unknown {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return undefined;
+	}
+}
+
+function messageOf(payload: unknown): string {
+	const message = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>).message : undefined;
+	return typeof message === "string" ? message : "";
 }
 
 async function photoAlbums(http: LycheeHttp, photoId: string): Promise<PhotoAlbumsResult> {

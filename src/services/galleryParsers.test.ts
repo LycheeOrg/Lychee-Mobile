@@ -55,7 +55,7 @@ describe("parseRootAlbums (FR-003-01, DO-003-03)", () => {
 	it("is empty when every section is empty", () => {
 		const empty = { ...albums, smart_albums: [], tag_albums: [], albums: [], shared_albums: [] };
 
-		expect(parseRootAlbums(empty)).toEqual({ sections: [], canUpload: false });
+		expect(parseRootAlbums(empty)).toEqual({ sections: [], canUpload: false, canEdit: false });
 	});
 
 	it("skips malformed tiles", () => {
@@ -81,6 +81,7 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			canDownload: true,
 			canDelete: false,
 			mapAllowed: false,
+			canEdit: false,
 		});
 	});
 
@@ -101,6 +102,7 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			canDownload: true,
 			canDelete: false,
 			mapAllowed: false,
+			canEdit: false,
 		});
 	});
 
@@ -278,5 +280,18 @@ describe("info panel switches (FR-008-01, FR-008-05, DO-008-02)", () => {
 
 	it("gives every photo its details", () => {
 		expect(parsePhotoPage(albumPhotos)?.items[0].details.model).toBe("Pixel 11 Pro");
+	});
+});
+
+describe("edit rights for creating albums (FR-010-02, DO-010-02)", () => {
+	it("reads the root's and an album's edit right", () => {
+		expect(parseRootAlbums({ ...albums, rights: { ...albums.rights, can_edit: true } })?.canEdit).toBe(true);
+		const editable = { ...albumHead, resource: { ...albumHead.resource, rights: { ...albumHead.resource.rights, can_edit: true } } };
+		expect(parseAlbumHead(editable)?.canEdit).toBe(true);
+	});
+
+	it("treats missing rights as no edit", () => {
+		expect(parseRootAlbums({ ...albums, rights: undefined })?.canEdit).toBe(false);
+		expect(parseAlbumHead({ ...albumHead, resource: { ...albumHead.resource, rights: undefined } })?.canEdit).toBe(false);
 	});
 });

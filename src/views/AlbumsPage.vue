@@ -4,7 +4,7 @@
 			<IonToolbar>
 				<IonTitle>Lychee</IonTitle>
 				<IonButtons slot="end">
-					<UploadButton v-if="state.status === 'ready' && state.canUpload" :target="{ albumId: null }" />
+					<AddButton v-if="state.status === 'ready' && hasItems(addMenu)" :menu="addMenu" @created="openCreated" />
 					<IonButton router-link="/settings" aria-label="Settings">
 						<IonIcon slot="icon-only" :icon="settingsOutline" />
 					</IonButton>
@@ -75,9 +75,10 @@ import {
 } from "@ionic/vue";
 import { settingsOutline } from "ionicons/icons";
 import AlbumTileGrid from "@/components/AlbumTileGrid.vue";
-import UploadButton from "@/components/UploadButton.vue";
+import AddButton from "@/components/AddButton.vue";
 import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
+import { addMenuForRoot, hasItems } from "@/stores/addMenu";
 import { createAlbumList } from "@/stores/albumList";
 import { currentGalleryContext, galleryKey } from "@/stores/galleryContext";
 import { sensitiveDisplay } from "@/stores/sensitive";
@@ -100,6 +101,10 @@ const list = createAlbumList();
 const state = list.state;
 const view = computed(() => list.view());
 let loadedKey: string | null = null;
+// FR-010-02: upload into Unsorted and create top-level albums.
+const addMenu = computed(() => addMenuForRoot({ canUpload: state.canUpload, canEdit: state.canEdit }));
+// FR-010-03: an album created from here shows when the user comes back.
+let stale = false;
 
 // FR-003-08: no server → settings. FR-003-01: reload when the server or account changed.
 onIonViewWillEnter(async () => {
@@ -108,7 +113,8 @@ onIonViewWillEnter(async () => {
 		router.replace("/settings");
 		return;
 	}
-	if (galleryKey() !== loadedKey) {
+	if (galleryKey() !== loadedKey || stale) {
+		stale = false;
 		await load();
 	}
 });
@@ -147,6 +153,12 @@ async function unlock(password: string): Promise<void> {
 	if (ctx !== null) {
 		await list.unlock(ctx, password);
 	}
+}
+
+/** FR-010-03: opens the new album. */
+function openCreated(id: string): void {
+	stale = true;
+	open(id);
 }
 
 function open(id: string): void {

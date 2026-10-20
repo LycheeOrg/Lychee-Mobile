@@ -38,7 +38,7 @@ export type PhotoTile = {
 /** DO-003-03. */
 export type SectionKey = "pinned" | "smart" | "albums" | "shared" | "tags" | "people";
 export type AlbumSection = { key: SectionKey; albums: AlbumTile[] };
-export type RootAlbums = { sections: AlbumSection[]; canUpload: boolean };
+export type RootAlbums = { sections: AlbumSection[]; canUpload: boolean; canEdit: boolean };
 
 /** DO-003-04, DO-007-02. */
 export type AlbumKind = "album" | "smart" | "tag" | "person";
@@ -53,6 +53,8 @@ export type AlbumHead = {
 	canDelete: boolean;
 	/** FR-008-05: `config.is_map_accessible`. */
 	mapAllowed: boolean;
+	/** FR-010-02: sub-albums may be created in it. */
+	canEdit: boolean;
 };
 
 /** DO-003-05, DO-004-02. */
@@ -88,7 +90,7 @@ export function parseRootAlbums(payload: unknown): RootAlbums | undefined {
 	const sections = SECTIONS.map(([key, field]) => ({ key, albums: tilesOf(payload[field], parseAlbumTile) })).filter(
 		(section) => section.albums.length > 0,
 	);
-	return { sections, canUpload: canUploadOf(payload.rights) };
+	return { sections, canUpload: canUploadOf(payload.rights), canEdit: rightOf(payload.rights, "can_edit") };
 }
 
 export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
@@ -110,6 +112,7 @@ export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
 		canDownload: rightOf(resource.rights, "can_download"),
 		canDelete: rightOf(resource.rights, "can_delete"),
 		mapAllowed: config.is_map_accessible === true,
+		canEdit: rightOf(resource.rights, "can_edit"),
 	};
 }
 
