@@ -4,19 +4,24 @@
  */
 
 import { Preferences } from "@capacitor/preferences";
-import { deleteCapture } from "@/services/camera";
+import { releasePending } from "@/services/pendingFiles";
 import type { PickedFile } from "@/services/picker";
 import { serverStore } from "@/stores/server";
 import { uploadQueue, type QueueEntry } from "@/stores/uploadQueue";
 
-/** FR-011-04: a taken photo kept on the phone until Lychee accepted it. */
-export type PendingCapture = { file: PickedFile; albumId: string | null; server: string };
+/**
+ * FR-011-04, FR-012-04: a file kept until Lychee accepted it, and how to clean
+ * up after: `capture` a taken photo's file (the default for Feature 011's
+ * entries), `copy` an iOS copy of a picked file, `grant` Android's access.
+ */
+export type Cleanup = "capture" | "copy" | "grant";
+export type PendingCapture = { file: PickedFile; albumId: string | null; server: string; cleanup?: Cleanup };
 
 export type PendingCapturesDeps = {
 	load: () => Promise<PendingCapture[]>;
 	save: (list: PendingCapture[]) => Promise<void>;
-	/** Deletes the photo's file (the native capture store). */
-	deleteFile: (path: string) => Promise<void>;
+	/** Cleans up after a file that left the list (`releasePending`). */
+	release: (item: PendingCapture) => Promise<void>;
 	queue: {
 		state: { readonly entries: readonly QueueEntry[] };
 		add: (files: PickedFile[], albumId: string | null) => void;
@@ -94,16 +99,25 @@ export function createPendingCaptures(deps: PendingCapturesDeps) {
 
 	function forget(path: string): Promise<void> {
 		return change(async (current) => {
-			await deps.deleteFile(path).catch(() => undefined);
-			return current.filter((item) => item.file.path !== path);
+			const item = current.find((candidate) => candidate.file.path === path);
+			if (item !== undefined) {
+				await deps.release(item).catch(() => undefined);
+			}
+			return current.filter((candidate) => candidate.file.path !== path);
 		});
 	}
 
 	function isPending(path: string): boolean {
-		return items?.some((item) => item.file.path === path) ?? false;
+		return cleanupOf(path) !== null;
 	}
 
-	return { list, record, settled, resume, discard, isPending };
+	/** FR-012-04: how a pending file is cleaned up, or `null` when it isn't pending. */
+	function cleanupOf(path: string): Cleanup | null {
+		const item = items?.find((candidate) => candidate.file.path === path);
+		return item === undefined ? null : (item.cleanup ?? "capture");
+	}
+
+	return { list, record, settled, resume, discard, isPending, cleanupOf };
 }
 
 export type PendingCaptures = ReturnType<typeof createPendingCaptures>;
@@ -122,7 +136,7 @@ export const pendingCaptures = createPendingCaptures({
 		}
 	},
 	save: (list) => Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(list) }),
-	deleteFile: (path) => deleteCapture(path),
+	release: (item) => releasePending(item),
 	queue: uploadQueue,
 	server: () => serverStore.state.saved?.url ?? null,
 });

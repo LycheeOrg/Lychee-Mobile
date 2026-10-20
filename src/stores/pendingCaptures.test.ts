@@ -34,7 +34,7 @@ function setup(stored: PendingCapture[] = [], server: string | null = A) {
 		save: vi.fn(async (list: PendingCapture[]) => {
 			saved = list;
 		}),
-		deleteFile: vi.fn(async () => undefined),
+		release: vi.fn(async (_item: PendingCapture) => undefined),
 		queue,
 		server: () => server,
 	} satisfies PendingCapturesDeps;
@@ -64,7 +64,7 @@ describe("pending captures (FR-011-04, Q-011-04)", () => {
 
 		await store.settled(entry("IMG_1.jpg", state));
 
-		expect(deps.deleteFile).toHaveBeenCalledWith("file:///files/captures/IMG_1.jpg");
+		expect(deps.release).toHaveBeenCalledWith(pending("IMG_1.jpg"));
 		expect(saved()).toEqual([]);
 	});
 
@@ -73,7 +73,7 @@ describe("pending captures (FR-011-04, Q-011-04)", () => {
 
 		await store.settled(entry("IMG_1.jpg", "failed"));
 
-		expect(deps.deleteFile).not.toHaveBeenCalled();
+		expect(deps.release).not.toHaveBeenCalled();
 		expect(saved()).toHaveLength(1);
 	});
 
@@ -82,7 +82,7 @@ describe("pending captures (FR-011-04, Q-011-04)", () => {
 
 		await store.settled(entry("other.jpg", "done"));
 
-		expect(deps.deleteFile).not.toHaveBeenCalled();
+		expect(deps.release).not.toHaveBeenCalled();
 	});
 
 	it("queues pending photos of the current server after launch (S-011-11)", async () => {
@@ -121,7 +121,7 @@ describe("pending captures (FR-011-04, Q-011-04)", () => {
 
 		await store.discard("file:///files/captures/IMG_1.jpg");
 
-		expect(deps.deleteFile).toHaveBeenCalledWith("file:///files/captures/IMG_1.jpg");
+		expect(deps.release).toHaveBeenCalledWith(pending("IMG_1.jpg"));
 		expect(queue.remove).toHaveBeenCalledWith(7);
 		expect(saved()).toEqual([]);
 	});
@@ -132,5 +132,15 @@ describe("pending captures (FR-011-04, Q-011-04)", () => {
 
 		expect(store.isPending("file:///files/captures/IMG_1.jpg")).toBe(true);
 		expect(store.isPending("file:///other.jpg")).toBe(false);
+	});
+
+	it("knows each pending file's cleanup; older entries are taken photos (FR-012-04)", async () => {
+		const picked: PendingCapture = { ...pending("PXL_1.jpg"), cleanup: "grant" };
+		const { store } = setup([pending("IMG_1.jpg"), picked]);
+		await store.list();
+
+		expect(store.cleanupOf("file:///files/captures/IMG_1.jpg")).toBe("capture");
+		expect(store.cleanupOf("file:///files/captures/PXL_1.jpg")).toBe("grant");
+		expect(store.cleanupOf("file:///other.jpg")).toBeNull();
 	});
 });

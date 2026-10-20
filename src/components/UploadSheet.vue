@@ -29,7 +29,7 @@
 						fill="clear"
 						color="danger"
 						@click="discard(entry.file.path)"
-						>Delete photo</IonButton
+						>{{ pendingCaptures.cleanupOf(entry.file.path) === "capture" ? "Delete photo" : "Remove" }}</IonButton
 					>
 				</IonItem>
 			</IonList>
@@ -65,8 +65,16 @@ import { DISCARD_PHOTO, entryStatus } from "@/utils/uploadMessages";
 const entries = computed(() => uploadQueue.state.entries);
 const hasFinished = computed(() => entries.value.some((entry) => entry.state === "done" || entry.state === "skipped"));
 
-/** FR-011-06: a taken photo that can't upload can be deleted, after a confirmation. */
+/**
+ * FR-011-06: a taken photo that can't upload can be deleted, after a
+ * confirmation; FR-012-04: a picked file is only removed from the uploads,
+ * its original stays on the phone.
+ */
 async function discard(path: string): Promise<void> {
+	if (pendingCaptures.cleanupOf(path) !== "capture") {
+		await pendingCaptures.discard(path);
+		return;
+	}
 	const confirm = await alertController.create({
 		message: DISCARD_PHOTO,
 		buttons: [

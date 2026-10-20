@@ -6,6 +6,9 @@
 					<IonBackButton default-href="/albums" />
 				</IonButtons>
 				<IonTitle>Settings</IonTitle>
+				<IonButtons slot="end">
+					<UploadRing />
+				</IonButtons>
 			</IonToolbar>
 		</IonHeader>
 
@@ -96,6 +99,7 @@ import {
 	onIonViewWillEnter,
 	useIonRouter,
 } from "@ionic/vue";
+import UploadRing from "@/components/UploadRing.vue";
 import { accountStore } from "@/stores/account";
 import { serverStore } from "@/stores/server";
 import { session } from "@/stores/session";

@@ -27,7 +27,7 @@ const PopoverStub = defineComponent({
 function button(menu: AddMenu) {
 	return mount(AddButton, {
 		props: { menu },
-		global: { stubs: { IonIcon: true, IonBadge: true, IonPopover: PopoverStub, IonContent: { template: "<div><slot /></div>" } } },
+		global: { stubs: { IonIcon: true, IonPopover: PopoverStub, IonContent: { template: "<div><slot /></div>" } } },
 	});
 }
 

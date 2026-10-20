@@ -4,6 +4,7 @@
 			<IonToolbar>
 				<IonTitle>Lychee</IonTitle>
 				<IonButtons slot="end">
+					<UploadRing />
 					<AddButton v-if="state.status === 'ready' && hasItems(addMenu)" :menu="addMenu" @created="openCreated" />
 					<IonButton router-link="/settings" aria-label="Settings">
 						<IonIcon slot="icon-only" :icon="settingsOutline" />
@@ -76,6 +77,7 @@ import {
 import { settingsOutline } from "ionicons/icons";
 import AlbumTileGrid from "@/components/AlbumTileGrid.vue";
 import AddButton from "@/components/AddButton.vue";
+import UploadRing from "@/components/UploadRing.vue";
 import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import { addMenuForRoot, hasItems } from "@/stores/addMenu";

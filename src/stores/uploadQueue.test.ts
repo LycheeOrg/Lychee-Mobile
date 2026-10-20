@@ -242,3 +242,28 @@ describe("settled files and removal (FR-011-04, FR-011-06)", () => {
 		expect(queue.state.entries.map((entry) => entry.file.name)).toEqual(["b"]);
 	});
 });
+
+describe("current run (FR-012-01)", () => {
+	it("starts a new run when files are added to an idle queue", async () => {
+		const queue = createUploadQueue({ upload: uploader([]), onUnauthenticated: vi.fn() });
+		queue.add([file("a"), file("b")], "a1");
+		await settle(queue);
+
+		queue.add([file("c")], "a1");
+
+		expect(queue.state.runIds).toEqual([queue.state.entries[2].id]);
+	});
+
+	it("adds files to the running run, and retried files too", async () => {
+		const queue = createUploadQueue({ upload: uploader([{ kind: "failed" }]), onUnauthenticated: vi.fn() });
+		queue.add([file("a")], "a1");
+		await settle(queue);
+		const failed = queue.state.entries[0];
+
+		queue.retry(failed.id);
+		queue.add([file("b")], "a1");
+
+		expect(queue.state.runIds).toEqual([failed.id, queue.state.entries[1].id]);
+		await settle(queue);
+	});
+});

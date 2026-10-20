@@ -1,7 +1,6 @@
 <template>
 	<IonButton :disabled="picking" aria-label="Add" @click="openMenu">
 		<IonIcon slot="icon-only" :icon="add" />
-		<IonBadge v-if="left > 0 && !uploadSheet.open" class="badge">{{ left }}</IonBadge>
 	</IonButton>
 	<IonPopover :is-open="menuOpen" :event="menuEvent" @did-dismiss="menuOpen = false">
 		<IonContent>
@@ -24,22 +23,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { alertController, IonBadge, IonButton, IonContent, IonIcon, IonItem, IonLabel, IonList, IonPopover } from "@ionic/vue";
+import { onMounted, ref } from "vue";
+import { alertController, IonButton, IonContent, IonIcon, IonItem, IonLabel, IonList, IonPopover } from "@ionic/vue";
 import { add, cameraOutline, cloudUploadOutline, folderOutline } from "ionicons/icons";
 import { cameraAvailable, takePhoto } from "@/services/camera";
+import { persistPicked } from "@/services/pendingFiles";
 import { pickForUpload } from "@/services/picker";
 import { createAlbumIn, MAX_TITLE_LENGTH, promptForAlbum, type AddMenu } from "@/stores/addMenu";
 import { currentGalleryContext } from "@/stores/galleryContext";
 import { pendingCaptures } from "@/stores/pendingCaptures";
 import { serverStore } from "@/stores/server";
 import { uploadQueue } from "@/stores/uploadQueue";
-import { uploadSheet } from "@/stores/uploadSheet";
 import { captureFailureMessage, pickFailureMessage } from "@/utils/uploadMessages";
 
 /**
  * FR-010-01: the toolbar's "+" with Upload photos (FR-005-01, FR-005-02) and
- * Create album (FR-010-03); it keeps the upload badge (UI-005-01).
+ * Create album (FR-010-03); upload progress shows in the toolbar's ring (FR-012-01).
  */
 const props = defineProps<{ menu: AddMenu }>();
 const emit = defineEmits<{ created: [id: string] }>();
@@ -47,7 +46,6 @@ const emit = defineEmits<{ created: [id: string] }>();
 const picking = ref(false);
 const menuOpen = ref(false);
 const menuEvent = ref<Event | undefined>(undefined);
-const left = computed(() => uploadQueue.remaining());
 // FR-011-01: Take photo only on phones with a camera.
 const hasCamera = ref(false);
 
@@ -73,9 +71,17 @@ async function upload(): Promise<void> {
 	picking.value = true;
 	const outcome = await pickForUpload();
 	picking.value = false;
-	if (outcome.kind === "picked" && outcome.files.length > 0) {
-		uploadQueue.add(outcome.files, target.albumId);
-		uploadSheet.open = true;
+	const server = serverStore.state.saved?.url;
+	if (outcome.kind === "picked" && outcome.files.length > 0 && server !== undefined) {
+		// FR-012-04: every queued file is kept until Lychee accepted it.
+		const kept = await persistPicked(outcome.files);
+		for (const { file, cleanup } of kept) {
+			await pendingCaptures.record({ file, albumId: target.albumId, server, cleanup });
+		}
+		uploadQueue.add(
+			kept.map(({ file }) => file),
+			target.albumId,
+		);
 	} else if (outcome.kind === "permission_denied" || outcome.kind === "failed") {
 		const alert = await alertController.create({ message: pickFailureMessage(outcome.kind), buttons: ["OK"] });
 		await alert.present();
@@ -93,7 +99,6 @@ async function photograph(): Promise<void> {
 	if (outcome.kind === "taken") {
 		await pendingCaptures.record({ file: outcome.file, albumId: target.albumId, server });
 		uploadQueue.add([outcome.file], target.albumId);
-		uploadSheet.open = true;
 	} else if (outcome.kind !== "cancelled") {
 		const alert = await alertController.create({ message: captureFailureMessage(outcome.kind), buttons: ["OK"] });
 		await alert.present();
@@ -129,11 +134,4 @@ async function askTitle(initial: string, message: string | null): Promise<string
 }
 </script>
 
-<style scoped>
-.badge {
-	position: absolute;
-	top: 2px;
-	right: 0;
-	font-size: 0.6rem;
-}
-</style>
+<style scoped></style>
