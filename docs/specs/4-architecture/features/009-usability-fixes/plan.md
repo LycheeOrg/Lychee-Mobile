@@ -2,7 +2,7 @@
 
 _Linked specification:_ [spec.md](spec.md)  
 _Linked tasks:_ [tasks.md](tasks.md)  
-_Status:_ In progress  
+_Status:_ Complete  
 _Last updated:_ 2026-10-20
 
 > Guardrail: Keep this plan traceable back to the governing spec. Reference FR/NFR/Scenario IDs from `spec.md` where relevant, log any new high- or medium-impact questions in the feature's [open-questions.md](open-questions.md), and assume clarifications are resolved only when the spec's normative sections and, where applicable, ADRs under `docs/specs/6-decisions/` have been updated.
@@ -39,9 +39,9 @@ I1–I2 run 2026-10-20 by the agent: spec rows complete for FR-009-01/02, no ope
 
 ## Drift Gate Report
 
-Run 2026-10-20 by the agent, with the device checks partly done.
+Run 2026-10-20 by the agent; device checks completed by the owner the same day.
 
-**Preconditions:** T-009-01 … 05, 07 `[x]`; T-009-06 partly confirmed (Android). `npx vp check`, `npx vp run typecheck`, `npx vp test` (42 files, 603 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green.
+**Preconditions:** all tasks `[x]` (T-009-01 … 07). `npx vp check`, `npx vp run typecheck`, `npx vp test` (42 files, 603 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green.
 
 | Requirement | Code | Evidence |
 |-------------|------|----------|
@@ -51,8 +51,9 @@ Run 2026-10-20 by the agent, with the device checks partly done.
 | FR-009-04 | `session.save()`, `SettingsPage.vue`, `saveOutcomeMessage`, `/login` removed, sign-in links → `/settings` | `session.test.ts` (12 save cases), `accountMessages.test.ts`; Save variants on device open |
 | FR-009-05 | `pickForUpload` asks once; `OriginalMedia.requestNameAccess()`, `realNameOf()`; manifest permissions | `picker.test.ts` (5 new); confirmed on Android |
 
-**Not verified yet:** back closing the app from the album list, the Settings Save variants (S-009-09 … 11), a rejected stored password landing on Settings (S-009-08), the iPhone.
+**Device checks:** all passed, as reported by the owner on 2026-10-20 ("everything in feature 009 can be marked as completed"): back closing the app, the Settings Save variants (S-009-09 … 11), a rejected stored password landing on Settings (S-009-08), and the iPhone. The agent didn't see these runs; the evidence is the owner's report.
 
 **Divergences:** the launch race (S-009-14) was found on the device and fixed beyond the planned scope; `LoginPage.vue` deleted with the owner's approval.
 
 **Lessons:** start-up state that pages wait on must exist before they mount; the owner's first symptom (a sign-in screen at launch) was this race, not the paths the analysis found by reading.
+- 2026-10-20: owner reported all remaining device checks passed; feature closed.
