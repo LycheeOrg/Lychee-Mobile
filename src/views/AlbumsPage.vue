@@ -29,7 +29,7 @@
 				v-else-if="state.status === 'sign_in'"
 				:text="signInNeededMessage(state.sessionEnded)"
 				action-label="Sign in"
-				@action="router.push('/login')"
+				@action="router.push('/settings')"
 			/>
 			<template v-else-if="state.status === 'gallery_locked'">
 				<PasswordPrompt
@@ -38,7 +38,7 @@
 					:failure="state.unlockFailure === null ? null : unlockFailureMessage(state.unlockFailure)"
 					@unlock="unlock"
 				/>
-				<IonButton expand="block" fill="clear" router-link="/login">Sign in instead</IonButton>
+				<IonButton expand="block" fill="clear" router-link="/settings">Sign in instead</IonButton>
 			</template>
 			<template v-else>
 				<GalleryMessage v-if="view.sections.length === 0 && view.hiddenCount === 0" :text="EMPTY_LIST" />

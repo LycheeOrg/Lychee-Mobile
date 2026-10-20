@@ -55,6 +55,8 @@ Until the secrets below exist, each release job prints a notice and skips, so th
 4. Approve the `production` environment when asked.
 5. App Store Connect: after review approval, release the version. Play Console: review the draft on the production track and roll it out.
 
+Before the first production release that includes Feature 009: Play Console → App content → Photo and video permissions: declare why the app uses `READ_MEDIA_IMAGES`/`READ_MEDIA_VIDEO` (keeping the camera's file names on photos uploaded to the user's Lychee gallery, ADR-009-01).
+
 ## Troubleshooting
 
 - **"skipping" notice:** a required secret is empty (see the `CONFIGURED` expressions in `release.yml`).

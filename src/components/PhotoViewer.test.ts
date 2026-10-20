@@ -92,3 +92,15 @@ describe("PhotoViewer info button (FR-008-01)", () => {
 		expect(gallery.mapProvider).not.toHaveBeenCalled();
 	});
 });
+
+describe("PhotoViewer overlay buttons (FR-009-02)", () => {
+	it("draws Close and Info as white icons, not Ionic's light colour (dark grey in dark mode)", () => {
+		const wrapper = viewer();
+
+		for (const label of ["Close", "Info"]) {
+			const button = wrapper.get(`[aria-label="${label}"]`);
+			expect(button.attributes("color")).toBeUndefined();
+			expect(button.classes()).toContain("overlay-button");
+		}
+	});
+});

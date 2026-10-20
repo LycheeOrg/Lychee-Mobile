@@ -4,6 +4,7 @@
  */
 
 import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
 import { OriginalMedia, type NativePickedFile } from "@/services/originalMedia";
 
@@ -20,7 +21,14 @@ export type PickerDeps = {
 	pickMedia: typeof FilePicker.pickMedia;
 	/** Android picking through the app's own plugin (Q-005-05). */
 	pickNative: () => Promise<{ files: NativePickedFile[] }>;
+	/** FR-009-05: Android photo and video read access, for the camera's file names. */
+	requestNameAccess: () => Promise<{ granted: boolean }>;
+	nameAccessAsked: () => Promise<boolean>;
+	markNameAccessAsked: () => Promise<void>;
 };
+
+/** FR-009-05: the app asks for name access only once (ADR-009-01). */
+const NAME_ACCESS_ASKED = "media_names_asked";
 
 export const nativePickerDeps: PickerDeps = {
 	platform: () => Capacitor.getPlatform(),
@@ -28,6 +36,9 @@ export const nativePickerDeps: PickerDeps = {
 	requestPermissions: (options) => FilePicker.requestPermissions(options),
 	pickMedia: (options) => FilePicker.pickMedia(options),
 	pickNative: () => OriginalMedia.pick(),
+	requestNameAccess: () => OriginalMedia.requestNameAccess(),
+	nameAccessAsked: async () => (await Preferences.get({ key: NAME_ACCESS_ASKED })).value === "true",
+	markNameAccessAsked: () => Preferences.set({ key: NAME_ACCESS_ASKED, value: "true" }),
 };
 
 const CANCELLED = /cancel/i;
@@ -41,6 +52,9 @@ export async function pickForUpload(deps: PickerDeps = nativePickerDeps): Promis
 	const android = deps.platform() === "android";
 	if (android && !(await hasMediaLocation(deps))) {
 		return { kind: "permission_denied" };
+	}
+	if (android) {
+		await askForNamesOnce(deps);
 	}
 	try {
 		const { files } = android ? await deps.pickNative() : await deps.pickMedia({ limit: 0, skipTranscoding: true });
@@ -62,6 +76,15 @@ async function hasMediaLocation(deps: PickerDeps): Promise<boolean> {
 	}
 	const requested = await deps.requestPermissions({ permissions: ["accessMediaLocation"] });
 	return requested.accessMediaLocation === "granted";
+}
+
+/** FR-009-05: the answer only decides whether names are looked up; it never blocks a pick. */
+async function askForNamesOnce(deps: PickerDeps): Promise<void> {
+	if (await deps.nameAccessAsked()) {
+		return;
+	}
+	await deps.requestNameAccess().catch(() => undefined);
+	await deps.markNameAccessAsked();
 }
 
 function toPickedFile(file: { path?: string; name: string; mimeType: string; size: number; modifiedAt?: number }): PickedFile[] {

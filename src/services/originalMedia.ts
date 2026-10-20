@@ -20,6 +20,8 @@ export type OriginalMediaPlugin = {
 	 * `PERMISSION_DENIED` (Android 7–9 storage permission refused) or `UNSAVEABLE`.
 	 */
 	saveToGallery: (options: { path: string; name: string; mimeType: string }) => Promise<void>;
+	/** NC-009-02: photo and video read access, so `pick()` can report the camera's file names (ADR-009-01). */
+	requestNameAccess: () => Promise<{ granted: boolean }>;
 };
 
 export const OriginalMedia = registerPlugin<OriginalMediaPlugin>("OriginalMedia");

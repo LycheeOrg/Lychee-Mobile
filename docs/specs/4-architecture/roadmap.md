@@ -6,6 +6,7 @@ High-level planning document for Lychee-Mobile features.
 
 | Feature ID | Name | Status | Priority | Assignee | Started | Updated | Progress |
 |------------|------|--------|----------|----------|---------|---------|----------|
+| 009 | Usability fixes | Testing | High | mlapaglia | 2026-10-20 | 2026-10-20 | All fixes coded plus the launch race (603 Vitest tests); confirmed on Android: buttons, file names, cold start; back, Settings Save variants and iPhone remain (T-009-06). Branch `feat/009-usability-fixes` (on top of 008). See `features/009-usability-fixes/`. |
 | 008 | Photo info panel | Testing | Medium | mlapaglia | 2026-10-20 | 2026-10-20 | Code complete, drift gate run (575 Vitest tests); confirmed on Android; iPhone and swiping with the sheet open remain (T-008-09). Branch `feat/008-photo-info-panel` (on top of 007, PR #10). See `features/008-photo-info-panel/`. |
 
 ## Backlog

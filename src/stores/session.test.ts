@@ -27,17 +27,26 @@ function fakeServer(initial: SavedServer | null, steps: Step[]) {
 	return { state, connect: vi.fn(async () => apply()), launchCheck: vi.fn(async () => apply()) };
 }
 
-function fakeAccount(after: AccountStatus) {
-	const state = reactive({ status: "unknown" as AccountStatus });
+function fakeAccount(
+	after: AccountStatus,
+	{ stored = null as string | null, signedInAs = null as string | null, signIn = true, reauth = false } = {},
+) {
+	const state = reactive({ status: "unknown" as AccountStatus, account: null as { username: string } | null });
 	return {
 		state,
 		refresh: vi.fn(async () => {
 			state.status = after;
+			state.account = signedInAs === null ? null : { username: signedInAs };
 		}),
 		reset: vi.fn(async () => {
 			state.status = "unknown";
 		}),
-		reauthenticate: vi.fn(async () => false),
+		reauthenticate: vi.fn(async () => reauth),
+		signIn: vi.fn(async (_server: string, _username: string, _password: string) => signIn),
+		signOut: vi.fn(async () => {
+			state.status = "signed_out";
+		}),
+		storedUsername: vi.fn(async (_server: string) => stored),
 	};
 }
 
@@ -70,6 +79,17 @@ describe("launch (FR-002-03)", () => {
 	});
 });
 
+describe("launch when the account can't be read (FR-009-03, S-009-06)", () => {
+	it("still signs in silently with the stored credentials", async () => {
+		const server = fakeServer({ url: A, version: null }, [{ saved: { url: A, version: null } }]);
+		const account = fakeAccount("unknown");
+
+		await createSession(server, account).launch();
+
+		expect(account.reauthenticate).toHaveBeenCalledWith(A);
+	});
+});
+
 describe("launch with stored credentials (FR-006-02, S-006-03)", () => {
 	it("signs in silently when the session reads signed out", async () => {
 		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
@@ -90,46 +110,92 @@ describe("launch with stored credentials (FR-006-02, S-006-03)", () => {
 	});
 });
 
-describe("connect (FR-002-05)", () => {
-	it("opens sign-in when the new server's session is signed out (S-002-10)", async () => {
-		const server = fakeServer(null, [{ saved: { url: A, version: null }, status: "connected" }]);
+describe("save (FR-009-04)", () => {
+	const connected = (from: SavedServer | null = { url: A, version: null }, to = A) =>
+		fakeServer(from, [{ saved: { url: to, version: null }, status: "connected" }]);
+	const save = (server: ReturnType<typeof fakeServer>, account: ReturnType<typeof fakeAccount>, username: string, password: string) =>
+		createSession(server, account).save({ server: "a.example.com", username, password });
+
+	it("stays when the server check fails, touching nothing else", async () => {
+		const server = fakeServer({ url: A, version: null }, [{ saved: { url: A, version: null }, status: "failed" }]);
 		const account = fakeAccount("signed_out");
 
-		expect(await createSession(server, account).connect("a.example.com")).toBe("sign_in");
-		expect(account.refresh).toHaveBeenCalledWith(A);
+		expect(await save(server, account, "mallory", "secret")).toBe("server_failed");
+		expect(account.refresh).not.toHaveBeenCalled();
+		expect(account.signIn).not.toHaveBeenCalled();
 	});
 
-	it("goes to the albums when already signed in to that server (FR-003-08)", async () => {
-		const server = fakeServer({ url: A, version: null }, [{ saved: { url: A, version: null }, status: "connected" }]);
-		const account = fakeAccount("signed_in");
-
-		expect(await createSession(server, account).connect("a.example.com")).toBe("albums");
-		expect(account.reset).not.toHaveBeenCalled();
-	});
-
-	it("resets the account when the server changes (S-002-09)", async () => {
-		const server = fakeServer({ url: A, version: null }, [{ saved: { url: B, version: null }, status: "connected" }]);
+	it("signs in with a typed password", async () => {
 		const account = fakeAccount("signed_out");
 
-		await createSession(server, account).connect("b.example.com");
+		expect(await save(connected(), account, " mallory ", "secret")).toBe("albums");
+		expect(account.signIn).toHaveBeenCalledWith(A, "mallory", "secret");
+	});
 
+	it("reports a failed sign-in", async () => {
+		expect(await save(connected(), fakeAccount("signed_out", { signIn: false }), "mallory", "wrong")).toBe("sign_in_failed");
+	});
+
+	it("keeps the account when already signed in as that user and the password is blank (S-009-10)", async () => {
+		const account = fakeAccount("signed_in", { stored: "mallory", signedInAs: "mallory" });
+
+		expect(await save(connected(), account, "mallory", "")).toBe("albums");
+		expect(account.signIn).not.toHaveBeenCalled();
+		expect(account.reauthenticate).not.toHaveBeenCalled();
+	});
+
+	it("signs in with the stored password when the field is blank (FR-009-03)", async () => {
+		const account = fakeAccount("signed_out", { stored: "mallory", reauth: true });
+
+		expect(await save(connected(), account, "mallory", "")).toBe("albums");
+		expect(account.reauthenticate).toHaveBeenCalledWith(A);
+	});
+
+	it("reports a failed silent sign-in", async () => {
+		expect(await save(connected(), fakeAccount("signed_out", { stored: "mallory", reauth: false }), "mallory", "")).toBe("sign_in_failed");
+	});
+
+	it("asks for the password when nothing is stored for that username", async () => {
+		expect(await save(connected(), fakeAccount("signed_out", { stored: "someone" }), "mallory", "")).toBe("password_needed");
+		expect(await save(connected(), fakeAccount("signed_out"), "mallory", "")).toBe("password_needed");
+	});
+
+	it("asks for the username when only a password is given", async () => {
+		expect(await save(connected(), fakeAccount("signed_out"), " ", "secret")).toBe("username_needed");
+	});
+
+	it("signs out and continues as a guest with both fields empty (S-009-11)", async () => {
+		const account = fakeAccount("signed_in", { signedInAs: "mallory" });
+
+		expect(await save(connected(), account, "", "")).toBe("albums");
+		expect(account.signOut).toHaveBeenCalledWith(A);
+	});
+
+	it("continues as a guest without signing out when nobody is signed in", async () => {
+		const account = fakeAccount("signed_out");
+
+		expect(await save(connected(), account, "", "")).toBe("albums");
+		expect(account.signOut).not.toHaveBeenCalled();
+	});
+
+	it("resets the account on a new server, so a blank password can't reuse the old one (S-009-09)", async () => {
+		const account = fakeAccount("signed_out");
+		account.reset.mockImplementation(async () => {
+			account.storedUsername.mockResolvedValue(null);
+		});
+		account.storedUsername.mockResolvedValue("mallory");
+
+		expect(await save(connected({ url: A, version: null }, B), account, "mallory", "")).toBe("password_needed");
 		expect(account.reset).toHaveBeenCalled();
 		expect(account.refresh).toHaveBeenCalledWith(B);
 	});
 
-	it("stays and leaves the account alone when the check fails", async () => {
-		const server = fakeServer({ url: A, version: null }, [{ saved: { url: A, version: null }, status: "failed" }]);
-		const account = fakeAccount("signed_out");
+	it("doesn't reset the account for the same server", async () => {
+		const account = fakeAccount("signed_in", { stored: "mallory", signedInAs: "mallory" });
 
-		expect(await createSession(server, account).connect("b.example.com")).toBe("stay");
-		expect(account.refresh).not.toHaveBeenCalled();
+		await save(connected(), account, "mallory", "");
+
 		expect(account.reset).not.toHaveBeenCalled();
-	});
-
-	it("goes to the albums when the account can't be read (FR-003-08)", async () => {
-		const server = fakeServer(null, [{ saved: { url: A, version: null }, status: "connected" }]);
-
-		expect(await createSession(server, fakeAccount("unknown")).connect("a.example.com")).toBe("albums");
 	});
 });
 
@@ -152,7 +218,33 @@ describe("whenLaunched (FR-003-08)", () => {
 		expect(launched).toBe(true);
 	});
 
-	it("resolves at once when no launch ran", async () => {
-		await expect(createSession(fakeServer(null, []), fakeAccount("unknown")).whenLaunched()).resolves.toBeUndefined();
+	it("starts the launch when a page asks before it began, so it never sees an unloaded server (FR-009-03)", async () => {
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
+		const session = createSession(server, fakeAccount("signed_in"));
+
+		await session.whenLaunched();
+
+		expect(server.launchCheck).toHaveBeenCalledTimes(1);
+		expect(server.state.saved).toEqual({ url: A, version: null });
+	});
+
+	it("runs the start-up launch once, however many ask", async () => {
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }]);
+		const session = createSession(server, fakeAccount("signed_in"));
+
+		await Promise.all([session.whenLaunched(), session.whenLaunched()]);
+		await session.whenLaunched();
+
+		expect(server.launchCheck).toHaveBeenCalledTimes(1);
+	});
+
+	it("still runs a new launch on Retry", async () => {
+		const server = fakeServer(null, [{ saved: { url: A, version: null } }, { saved: { url: A, version: null } }]);
+		const session = createSession(server, fakeAccount("signed_in"));
+		await session.whenLaunched();
+
+		await session.launch();
+
+		expect(server.launchCheck).toHaveBeenCalledTimes(2);
 	});
 });
