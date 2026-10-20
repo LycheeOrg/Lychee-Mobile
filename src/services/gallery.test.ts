@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { createGallery, GALLERY_TIMEOUT_MS } from "@/services/gallery";
+import { createGallery, DELETE_TIMEOUT_MS, GALLERY_TIMEOUT_MS } from "@/services/gallery";
 import type { LycheeHttpDeps } from "@/services/lycheeHttp";
 import albums from "@/services/__fixtures__/lychee-7.11.1/albums.json";
 import albumHead from "@/services/__fixtures__/lychee-7.11.1/album-head.json";
@@ -17,6 +17,7 @@ import error404 from "@/services/__fixtures__/lychee-7.11.1/error-404-album.json
 import passwordRequired from "@/services/__fixtures__/lychee-7.11.1/error-password-required.json";
 import galleryLocked from "@/services/__fixtures__/lychee-7.11.1/error-gallery-locked.json";
 import wrongPassword from "@/services/__fixtures__/lychee-7.11.1/error-wrong-password.json";
+import error422Delete from "@/services/__fixtures__/lychee-7.11.1/error-422-delete.json";
 
 const SERVER = "https://photos.example.com";
 
@@ -145,5 +146,67 @@ describe("unlocking (FR-003-05)", () => {
 		const deps = server({ "POST Album::unlock": route });
 
 		expect(await createGallery(SERVER, deps).unlockAlbum("a1", "secret")).toEqual({ kind });
+	});
+});
+
+describe("deleting photos (FR-007-03, API-007-01)", () => {
+	it("deletes the photos from the album and answers ok on 204 (S-007-05)", async () => {
+		const deps = server({ "DELETE Photo": () => new Response(null, { status: 204 }) });
+
+		expect(await createGallery(SERVER, deps).deletePhotos(["p1", "p2"], "a1")).toEqual({ kind: "ok" });
+		const init = deps.fetch.mock.calls.find((call) => call[1]?.method === "DELETE")?.[1];
+		expect(JSON.parse(String(init?.body))).toEqual({ photo_ids: ["p1", "p2"], from_id: "a1" });
+	});
+
+	it("deletes from Unsorted by its smart album id (S-007-06)", async () => {
+		const deps = server({ "DELETE Photo": () => new Response(null, { status: 204 }) });
+
+		await createGallery(SERVER, deps).deletePhotos(["p1"], "unsorted");
+
+		const init = deps.fetch.mock.calls.find((call) => call[1]?.method === "DELETE")?.[1];
+		expect(JSON.parse(String(init?.body))).toMatchObject({ from_id: "unsorted" });
+	});
+
+	it.each([
+		["401", () => json(error401, 401), "unauthenticated"],
+		["403 (S-007-07)", () => json(error403, 403), "forbidden"],
+		["422", () => json(error422Delete, 422), "failed"],
+		["500", () => json({ message: "Server error" }, 500), "failed"],
+		["a network error", () => Promise.reject(new TypeError("Failed to fetch")), "unreachable"],
+	] as [string, Route, string][])("maps %s", async (_, route, kind) => {
+		const deps = server({ "DELETE Photo": route });
+
+		expect(await createGallery(SERVER, deps).deletePhotos(["p1"], "a1")).toEqual({ kind });
+	});
+
+	it("reports a timeout separately, since photos may be gone (S-007-09)", async () => {
+		vi.useFakeTimers();
+		const result = createGallery(SERVER, server({ "DELETE Photo": never })).deletePhotos(["p1"], "a1");
+
+		await vi.advanceTimersByTimeAsync(DELETE_TIMEOUT_MS);
+
+		expect(await result).toEqual({ kind: "timeout" });
+	});
+
+	it("allows 30 seconds", () => {
+		expect(DELETE_TIMEOUT_MS).toBe(30_000);
+	});
+});
+
+describe("download requests (FR-007-04, API-007-02)", () => {
+	it("asks for one photo's original from its album, with the session cookie", async () => {
+		const deps = server({});
+
+		expect(await createGallery(SERVER, deps).downloadRequest("p1", "a1")).toEqual({
+			url: `${SERVER}/api/v2/Zip?photo_ids=p1&variant=ORIGINAL&from_id=a1`,
+			headers: { Cookie: "XSRF-TOKEN=t" },
+		});
+	});
+
+	it("sends no Cookie header without cookies", async () => {
+		const deps = server({});
+		deps.readCookies.mockResolvedValue({});
+
+		expect((await createGallery(SERVER, deps).downloadRequest("p1", "a1")).headers).toEqual({});
 	});
 });

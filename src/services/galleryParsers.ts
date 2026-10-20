@@ -20,16 +20,34 @@ export type PhotoKind = "photo" | "video" | "live" | "raw";
 export type Variant = { url: string; width: number; height: number };
 export type VariantName = "medium2x" | "medium" | "original" | "small2x" | "small" | "thumb2x" | "thumb";
 export type Variants = Record<VariantName, Variant | null>;
-export type PhotoTile = { id: string; title: string; kind: PhotoKind; thumb: Thumb | null; variants: Variants; liveUrl: string | null };
+/** `mimeType`: Lychee's `type` (DO-007-02). */
+export type PhotoTile = {
+	id: string;
+	title: string;
+	kind: PhotoKind;
+	mimeType: string | null;
+	thumb: Thumb | null;
+	variants: Variants;
+	liveUrl: string | null;
+};
 
 /** DO-003-03. */
 export type SectionKey = "pinned" | "smart" | "albums" | "shared" | "tags" | "people";
 export type AlbumSection = { key: SectionKey; albums: AlbumTile[] };
 export type RootAlbums = { sections: AlbumSection[]; canUpload: boolean };
 
-/** DO-003-04. */
+/** DO-003-04, DO-007-02. */
 export type AlbumKind = "album" | "smart" | "tag" | "person";
-export type AlbumHead = { id: string; title: string; kind: AlbumKind; hasSubAlbums: boolean; nsfwWarning: boolean; canUpload: boolean };
+export type AlbumHead = {
+	id: string;
+	title: string;
+	kind: AlbumKind;
+	hasSubAlbums: boolean;
+	nsfwWarning: boolean;
+	canUpload: boolean;
+	canDownload: boolean;
+	canDelete: boolean;
+};
 
 /** DO-003-05, DO-004-02. */
 export type Page<T> = { items: T[]; page: number; lastPage: number; total: number };
@@ -77,6 +95,8 @@ export function parseAlbumHead(payload: unknown): AlbumHead | undefined {
 		hasSubAlbums: kind === "album" && typeof resource.num_children === "number" && resource.num_children > 0,
 		nsfwWarning: config.is_nsfw_warning_visible === true,
 		canUpload: canUploadOf(resource.rights),
+		canDownload: rightOf(resource.rights, "can_download"),
+		canDelete: rightOf(resource.rights, "can_delete"),
 	};
 }
 
@@ -120,6 +140,7 @@ function parsePhotoTile(payload: unknown): PhotoTile | undefined {
 		id: payload.id,
 		title: typeof payload.title === "string" ? payload.title : "",
 		kind: photoKindOf(isObject(payload.precomputed) ? payload.precomputed : {}),
+		mimeType: typeof payload.type === "string" && payload.type !== "" ? payload.type : null,
 		thumb: thumbOf(urlOf(variants.thumb), urlOf(variants.thumb2x)),
 		variants: Object.fromEntries(VARIANT_NAMES.map((name) => [name, variantOf(variants[name])])) as Variants,
 		liveUrl: typeof payload.live_photo_url === "string" && payload.live_photo_url !== "" ? payload.live_photo_url : null,
@@ -185,7 +206,12 @@ function tilesOf<T>(items: unknown, parse: (item: unknown) => T | undefined): T[
 
 /** FR-005-02: `rights.can_upload`, false when missing. */
 function canUploadOf(rights: unknown): boolean {
-	return isObject(rights) && rights.can_upload === true;
+	return rightOf(rights, "can_upload");
+}
+
+/** One of Lychee's `rights` flags, false when missing (FR-005-02, FR-007-02). */
+function rightOf(rights: unknown, name: string): boolean {
+	return isObject(rights) && rights[name] === true;
 }
 
 function isObject(value: unknown): value is Json {

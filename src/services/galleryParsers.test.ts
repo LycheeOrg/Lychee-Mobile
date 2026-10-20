@@ -78,6 +78,8 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			hasSubAlbums: true,
 			nsfwWarning: false,
 			canUpload: false,
+			canDownload: true,
+			canDelete: false,
 		});
 	});
 
@@ -95,6 +97,8 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			hasSubAlbums: false,
 			nsfwWarning: false,
 			canUpload: false,
+			canDownload: true,
+			canDelete: false,
 		});
 	});
 
@@ -223,5 +227,39 @@ describe("upload rights (FR-005-02)", () => {
 
 	it("treats missing rights as no upload", () => {
 		expect(parseRootAlbums({ ...albums, rights: undefined })?.canUpload).toBe(false);
+	});
+});
+
+describe("download and delete rights (FR-007-02, DO-007-02)", () => {
+	const withRights = (rights: Record<string, boolean>) => ({
+		...albumHead,
+		resource: { ...albumHead.resource, rights: { ...albumHead.resource.rights, ...rights } },
+	});
+
+	it("reads an album's download and delete rights", () => {
+		expect(parseAlbumHead(withRights({ can_download: false, can_delete: true }))).toMatchObject({ canDownload: false, canDelete: true });
+	});
+
+	it("treats missing rights as neither", () => {
+		const head = { ...albumHead, resource: { ...albumHead.resource, rights: undefined } };
+
+		expect(parseAlbumHead(head)).toMatchObject({ canDownload: false, canDelete: false });
+	});
+});
+
+describe("photo MIME type (FR-007-06, DO-007-02)", () => {
+	it("reads each photo's type", () => {
+		expect(parsePhotoPage(albumPhotos)?.items.map((photo) => photo.mimeType)).toEqual([
+			"image/jpeg",
+			"video/mp4",
+			"image/jpeg",
+			"image/x-canon-cr2",
+		]);
+	});
+
+	it("keeps a missing type as null", () => {
+		const photo = { ...albumPhotos.photos[0], type: undefined };
+
+		expect(parsePhotoPage({ ...albumPhotos, photos: [photo] })?.items[0].mimeType).toBeNull();
 	});
 });

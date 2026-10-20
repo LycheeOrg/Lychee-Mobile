@@ -4,9 +4,10 @@
  */
 
 import { reactive, readonly } from "vue";
-import type { GalleryFailure, GalleryResult, UnlockFailure } from "@/services/gallery";
+import type { DeleteResult, GalleryFailure, GalleryResult, UnlockFailure } from "@/services/gallery";
 import type { AlbumHead, AlbumKind, AlbumTile, Page, PhotoTile } from "@/services/galleryParsers";
 import type { GalleryContext } from "@/stores/galleryContext";
+import { createPhotoSelection } from "@/stores/photoSelection";
 
 export type AlbumPageStatus = "loading" | "ready" | "password" | "sensitive" | "sign_in" | "failed";
 
@@ -16,7 +17,8 @@ export const acceptedSensitiveAlbums = new Set<string>();
 /**
  * One album: its head, then sub-album pages, then photo pages (FR-003-02),
  * with album unlock (FR-003-05), sign-in handoff (FR-003-06) and the
- * sensitive-content warning (FR-003-09).
+ * sensitive-content warning (FR-003-09), and deleting selected photos
+ * (FR-007-03).
  */
 export function createAlbumPage(albumId: string, accepted: Set<string> = acceptedSensitiveAlbums) {
 	const state = reactive({
@@ -26,6 +28,8 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		title: "",
 		kind: "album" as AlbumKind,
 		canUpload: false,
+		canDownload: false,
+		canDelete: false,
 		albums: [] as AlbumTile[],
 		photos: [] as PhotoTile[],
 		photoTotal: 0,
@@ -36,13 +40,18 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		moreFailed: false,
 		unlocking: false,
 		unlockFailure: null as UnlockFailure | null,
+		deleting: false,
 	});
+	const selection = createPhotoSelection();
 	// Bumped by every load, so pages requested before it are dropped.
 	let generation = 0;
+	// Length of the first photo page, to find the next page after a delete (S-007-19).
+	let photoPageSize = 0;
 
 	/** `retried`: already loaded again after a silent login (FR-006-02). */
 	async function load(ctx: GalleryContext, retried = false): Promise<void> {
 		const current = ++generation;
+		selection.clear();
 		Object.assign(state, { status: "loading", failure: null, albums: [], photos: [], photoTotal: 0, moreFailed: false, loadingMore: false });
 		const result = await ctx.gallery.head(albumId);
 		if (current !== generation) {
@@ -73,6 +82,8 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		state.title = head.title;
 		state.kind = head.kind;
 		state.canUpload = head.canUpload;
+		state.canDownload = head.canDownload;
+		state.canDelete = head.canDelete;
 		state.nextAlbumsPage = head.hasSubAlbums ? 1 : null;
 		state.nextPhotosPage = 1;
 		updateHasMore();
@@ -125,7 +136,12 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 	async function loadPhotos(ctx: GalleryContext, current: number): Promise<GalleryFailure | null> {
 		const result = await ctx.gallery.photos(albumId, state.nextPhotosPage ?? 1);
 		return apply(result, current, (page) => {
-			state.photos = [...state.photos, ...page.items];
+			if (page.page === 1) {
+				photoPageSize = page.items.length;
+			}
+			// A page fetched again after a delete repeats photos already shown.
+			const shown = new Set(state.photos.map((photo) => photo.id));
+			state.photos = [...state.photos, ...page.items.filter((photo) => !shown.has(photo.id))];
 			state.photoTotal = page.total;
 			state.nextPhotosPage = nextPage(page);
 		});
@@ -175,11 +191,45 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		await loadFirstPages(ctx, generation);
 	}
 
+	/** FR-007-03: one silent login on a 401; a timeout reloads, as photos may be gone. */
+	async function deleteSelected(ctx: GalleryContext): Promise<DeleteResult["kind"]> {
+		const ids = selection.ids();
+		if (ids.length === 0) {
+			return "ok";
+		}
+		state.deleting = true;
+		let result = await ctx.gallery.deletePhotos(ids, albumId);
+		if (result.kind === "unauthenticated" && (await ctx.onUnauthenticated())) {
+			result = await ctx.gallery.deletePhotos(ids, albumId);
+		}
+		state.deleting = false;
+		if (result.kind === "ok") {
+			removePhotos(ids);
+		} else if (result.kind === "unauthenticated") {
+			await fail(ctx, "unauthenticated");
+		} else if (result.kind === "timeout") {
+			await load(ctx);
+		}
+		return result.kind;
+	}
+
+	/** Later server pages moved up by the deleted photos, so the next page is recomputed (S-007-19). */
+	function removePhotos(ids: string[]): void {
+		const gone = new Set(ids);
+		const before = state.photos.length;
+		state.photos = state.photos.filter((photo) => !gone.has(photo.id));
+		state.photoTotal = Math.max(0, state.photoTotal - (before - state.photos.length));
+		if (state.nextPhotosPage !== null && photoPageSize > 0) {
+			state.nextPhotosPage = Math.floor(state.photos.length / photoPageSize) + 1;
+		}
+		selection.clear();
+	}
+
 	function updateHasMore(): void {
 		state.hasMore = state.nextAlbumsPage !== null || state.nextPhotosPage !== null;
 	}
 
-	return { state: readonly(state), load, loadMore, unlock, continueSensitive };
+	return { state: readonly(state), selection, load, loadMore, unlock, continueSensitive, deleteSelected };
 }
 
 function nextPage(page: Page<unknown>): number | null {

@@ -3,10 +3,12 @@
 		<IonHeader :translucent="true">
 			<IonToolbar>
 				<IonButtons slot="start">
-					<IonBackButton default-href="/albums" />
+					<IonButton v-if="selection.state.active" @click="selection.clear()">Cancel</IonButton>
+					<IonBackButton v-else default-href="/albums" />
 				</IonButtons>
-				<IonTitle>{{ state.title }}</IonTitle>
-				<IonButtons slot="end">
+				<IonTitle>{{ selection.state.active ? selectionTitle(selection.count()) : state.title }}</IonTitle>
+				<IonButtons v-if="!selection.state.active" slot="end">
+					<IonButton v-if="canSelect" @click="selection.start()">Select</IonButton>
 					<UploadButton v-if="state.status === 'ready' && uploadTarget !== null" :target="uploadTarget" />
 				</IonButtons>
 			</IonToolbar>
@@ -52,7 +54,15 @@
 					<span>{{ hiddenSensitiveMessage(subAlbums.hiddenCount) }}</span>
 					<IonButton size="small" fill="outline" @click="sensitiveDisplay.revealed = true">Show</IonButton>
 				</div>
-				<PhotoGrid :photos="state.photos" @open="openViewer" />
+				<PhotoGrid
+					:photos="state.photos"
+					:selecting="selection.state.active"
+					:selected="selection.state.ids"
+					:selectable="canSelect"
+					@open="openViewer"
+					@hold="selection.start($event)"
+					@toggle="selection.toggle($event)"
+				/>
 				<GalleryMessage v-if="state.albums.length === 0 && state.photos.length === 0 && !state.hasMore" :text="EMPTY_ALBUM" />
 				<GalleryMessage v-if="state.moreFailed" :text="LOAD_MORE_FAILED" action-label="Retry" @action="more" />
 			</template>
@@ -74,6 +84,31 @@
 				<IonInfiniteScrollContent />
 			</IonInfiniteScroll>
 		</IonContent>
+
+		<IonFooter v-if="selection.state.active || downloadRun.state.status !== 'idle'">
+			<DownloadBar
+				v-if="downloadRun.state.status !== 'idle'"
+				:run="downloadRun.state"
+				@retry="retryDownloads"
+				@dismiss="downloadRun.dismiss()"
+				@sign-in="router.push('/login')"
+			/>
+			<IonToolbar v-if="selection.state.active">
+				<div class="actions">
+					<IonSpinner v-if="state.deleting" />
+					<template v-else>
+						<IonButton v-if="actions.download" fill="clear" :disabled="selection.count() === 0" @click="download">
+							<IonIcon slot="start" :icon="downloadOutline" />
+							Download
+						</IonButton>
+						<IonButton v-if="actions.delete" fill="clear" color="danger" :disabled="selection.count() === 0" @click="confirmDelete">
+							<IonIcon slot="start" :icon="trashOutline" />
+							Delete
+						</IonButton>
+					</template>
+				</div>
+			</IonToolbar>
+		</IonFooter>
 	</IonPage>
 </template>
 
@@ -81,11 +116,14 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
+	alertController,
 	IonBackButton,
 	IonButton,
 	IonButtons,
 	IonContent,
+	IonFooter,
 	IonHeader,
+	IonIcon,
 	IonInfiniteScroll,
 	IonInfiniteScrollContent,
 	IonModal,
@@ -95,18 +133,26 @@ import {
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
+	onIonViewDidEnter,
 	onIonViewWillEnter,
+	onIonViewWillLeave,
+	useBackButton,
 	useIonRouter,
 	type InfiniteScrollCustomEvent,
 	type RefresherCustomEvent,
 } from "@ionic/vue";
+import { downloadOutline, trashOutline } from "ionicons/icons";
 import AlbumTileGrid from "@/components/AlbumTileGrid.vue";
+import DownloadBar from "@/components/DownloadBar.vue";
 import GalleryMessage from "@/components/GalleryMessage.vue";
 import PasswordPrompt from "@/components/PasswordPrompt.vue";
 import PhotoGrid from "@/components/PhotoGrid.vue";
 import PhotoViewer from "@/components/PhotoViewer.vue";
 import UploadButton from "@/components/UploadButton.vue";
+import type { PhotoTile } from "@/services/galleryParsers";
 import { createAlbumPage } from "@/stores/albumPage";
+import { downloadRun } from "@/stores/downloadRun";
+import { photoActionsFor } from "@/stores/photoRights";
 import { currentGalleryContext } from "@/stores/galleryContext";
 import { sensitiveDisplay, showsSensitive, visibleAlbums } from "@/stores/sensitive";
 import { uploadQueue, uploadTargetFor } from "@/stores/uploadQueue";
@@ -120,16 +166,24 @@ import {
 	signInNeededMessage,
 	unlockFailureMessage,
 } from "@/utils/galleryMessages";
+import { DELETE_CONFIRM_TEXT, deleteConfirmTitle, deleteFailureMessage, SAVE_PERMISSION_DENIED, selectionTitle } from "@/utils/photoActionMessages";
 
 const router = useIonRouter();
 const albumId = String(useRoute().params.id);
 const album = createAlbumPage(albumId);
 const state = album.state;
+const selection = album.selection;
 const subAlbums = computed(() => visibleAlbums([...state.albums], showsSensitive(sensitiveDisplay)));
 const retryable = computed(() => state.failure === "unreachable" || state.failure === "failed");
 let loaded = false;
 // FR-005-02: where this page's Upload button sends files, if anywhere.
 const uploadTarget = computed(() => uploadTargetFor({ id: albumId, kind: state.kind, canUpload: state.canUpload }));
+
+// FR-007-02: the selection actions this album offers.
+const actions = computed(() => photoActionsFor({ id: albumId, kind: state.kind, canDownload: state.canDownload, canDelete: state.canDelete }));
+const canSelect = computed(() => state.status === "ready" && state.photos.length > 0 && (actions.value.download || actions.value.delete));
+// Ionic keeps earlier pages alive; only the visible one answers Back and shows alerts.
+let visible = false;
 
 // FR-005-05: reload after uploads into this album.
 watch(
@@ -152,6 +206,36 @@ onIonViewWillEnter(async () => {
 		await load();
 	}
 });
+
+onIonViewDidEnter(() => {
+	visible = true;
+});
+
+// FR-007-01: leaving the page ends selection mode.
+onIonViewWillLeave(() => {
+	visible = false;
+	selection.clear();
+});
+
+// FR-007-01: Android back leaves selection mode before leaving the page.
+useBackButton(15, (processNextHandler) => {
+	if (visible && selection.state.active) {
+		selection.clear();
+		return;
+	}
+	processNextHandler();
+});
+
+// FR-007-05: a denied library permission stops the run; say why once.
+watch(
+	() => downloadRun.state.stopReason,
+	async (reason) => {
+		if (visible && reason === "permission_denied") {
+			const alert = await alertController.create({ message: SAVE_PERMISSION_DENIED, buttons: ["OK"] });
+			await alert.present();
+		}
+	},
+);
 
 async function load(): Promise<void> {
 	const ctx = currentGalleryContext();
@@ -206,12 +290,62 @@ async function viewerClosed(): Promise<void> {
 	}
 }
 
+/** FR-007-03: confirm, delete, and explain a failure; a 401 the store can't fix shows sign-in instead. */
+async function confirmDelete(): Promise<void> {
+	const confirm = await alertController.create({
+		header: deleteConfirmTitle(selection.count()),
+		message: DELETE_CONFIRM_TEXT,
+		buttons: [
+			{ text: "Cancel", role: "cancel" },
+			{ text: "Delete", role: "destructive" },
+		],
+	});
+	await confirm.present();
+	const { role } = await confirm.onDidDismiss();
+	const ctx = currentGalleryContext();
+	if (role !== "destructive" || ctx === null) {
+		return;
+	}
+	const result = await album.deleteSelected(ctx);
+	if (result !== "ok" && result !== "unauthenticated") {
+		const failure = await alertController.create({ message: deleteFailureMessage(result), buttons: ["OK"] });
+		await failure.present();
+	}
+}
+
+/** FR-007-04: hands the selected photos to the app-wide run, in the order they were selected. */
+function download(): void {
+	const ctx = currentGalleryContext();
+	if (ctx === null) {
+		return;
+	}
+	const photos = selection
+		.ids()
+		.map((id) => state.photos.find((photo) => photo.id === id))
+		.filter((photo): photo is PhotoTile => photo !== undefined);
+	downloadRun.download(ctx, albumId, photos);
+	selection.clear();
+}
+
+function retryDownloads(): void {
+	const ctx = currentGalleryContext();
+	if (ctx !== null) {
+		downloadRun.retryFailed(ctx);
+	}
+}
+
 function open(id: string): void {
 	router.push(`/albums/${encodeURIComponent(id)}`);
 }
 </script>
 
 <style scoped>
+.actions {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+}
+
 .center {
 	display: flex;
 	justify-content: center;

@@ -1,0 +1,4 @@
+{
+	"message": "The photo ids field is required.",
+	"exception": "ValidationException"
+}

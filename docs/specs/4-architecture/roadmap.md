@@ -6,6 +6,7 @@ High-level planning document for Lychee-Mobile features.
 
 | Feature ID | Name | Status | Priority | Assignee | Started | Updated | Progress |
 |------------|------|--------|----------|----------|---------|---------|----------|
+| 007 | Photo download and delete | Testing | Medium | mlapaglia | 2026-10-20 | 2026-10-20 | Code complete (T-007-00 … 14, 16 … 18; 506 Vitest tests, Android and iOS simulator builds green); device checks T-007-15, 19, 20 and the drift gate remain. See `features/007-photo-download-delete/`. |
 
 ## Backlog
 

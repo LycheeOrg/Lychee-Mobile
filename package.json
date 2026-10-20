@@ -22,9 +22,12 @@
 	},
 	"dependencies": {
 		"@aparajita/capacitor-secure-storage": "8.0.1",
+		"@capacitor-community/media": "9.1.0",
 		"@capacitor/android": "^8.5.3",
 		"@capacitor/app": "^8.1.2",
 		"@capacitor/core": "^8.5.3",
+		"@capacitor/file-transfer": "2.0.6",
+		"@capacitor/filesystem": "8.1.5",
 		"@capacitor/ios": "^8.5.3",
 		"@capacitor/preferences": "^8.0.1",
 		"@capawesome/capacitor-file-picker": "8.1.0",
