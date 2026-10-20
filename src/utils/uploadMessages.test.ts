@@ -4,7 +4,14 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { entryStatus, PERMISSION_DENIED, pickFailureMessage, uploadResultMessage } from "@/utils/uploadMessages";
+import {
+	captureFailureMessage,
+	DISCARD_PHOTO,
+	entryStatus,
+	PERMISSION_DENIED,
+	pickFailureMessage,
+	uploadResultMessage,
+} from "@/utils/uploadMessages";
 import type { QueueEntry } from "@/stores/uploadQueue";
 
 const entry = (overrides: Partial<QueueEntry>): QueueEntry => ({
@@ -60,5 +67,19 @@ describe("pickFailureMessage (FR-005-01)", () => {
 
 	it("reports a picker failure", () => {
 		expect(pickFailureMessage("failed")).toBe("Couldn't open your photos.");
+	});
+});
+
+describe("camera messages (FR-011-02, FR-011-06)", () => {
+	it.each([
+		["no_camera", "No camera app found."],
+		["permission_denied", "Taking photos needs camera access. Allow it in the app's settings."],
+		["failed", "Couldn't take the photo."],
+	] as const)("explains %s", (kind, text) => {
+		expect(captureFailureMessage(kind)).toBe(text);
+	});
+
+	it("warns before deleting a photo that isn't in Lychee yet", () => {
+		expect(DISCARD_PHOTO).toBe("Delete this photo from the phone? It isn't in Lychee yet.");
 	});
 });

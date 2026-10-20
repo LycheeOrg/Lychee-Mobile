@@ -61,6 +61,8 @@ export function createUploadQueue(deps: QueueDeps) {
 	let nextId = 1;
 	let running: Promise<void> | null = null;
 	let stopped = false;
+	// FR-011-04: told about every file once it has its result.
+	const settledListeners = new Set<(entry: QueueEntry) => void>();
 
 	const waiting = () => state.entries.find((entry) => entry.state === "waiting");
 
@@ -101,6 +103,7 @@ export function createUploadQueue(deps: QueueDeps) {
 				}
 				stopped = true;
 			}
+			settledListeners.forEach((listener) => listener(current));
 		}
 		if (doneAlbums.size > 0) {
 			state.lastDoneAlbums = doneAlbums;
@@ -124,6 +127,15 @@ export function createUploadQueue(deps: QueueDeps) {
 		start();
 	}
 
+	/** FR-011-06: drops a failed file from the list. */
+	function remove(id: number): void {
+		state.entries = state.entries.filter((entry) => entry.id !== id || entry.state !== "failed");
+	}
+
+	function onSettled(listener: (entry: QueueEntry) => void): void {
+		settledListeners.add(listener);
+	}
+
 	function clearFinished(): void {
 		state.entries = state.entries.filter((entry) => !FINISHED.includes(entry.state));
 	}
@@ -138,7 +150,7 @@ export function createUploadQueue(deps: QueueDeps) {
 		}
 	}
 
-	return { state: readonly(state), add, retry, clearFinished, remaining, whenIdle };
+	return { state: readonly(state), add, retry, remove, onSettled, clearFinished, remaining, whenIdle };
 }
 
 // App wiring: one session and one chunk size per server.

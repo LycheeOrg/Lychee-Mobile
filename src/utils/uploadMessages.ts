@@ -43,3 +43,17 @@ export function entryStatus(entry: QueueEntry): string {
 export function pickFailureMessage(kind: "permission_denied" | "failed"): string {
 	return kind === "permission_denied" ? PERMISSION_DENIED : "Couldn't open your photos.";
 }
+
+const CAPTURE_FAILURES = {
+	no_camera: "No camera app found.",
+	permission_denied: "Taking photos needs camera access. Allow it in the app's settings.",
+	failed: "Couldn't take the photo.",
+} as const;
+
+/** FR-011-02. */
+export function captureFailureMessage(kind: keyof typeof CAPTURE_FAILURES): string {
+	return CAPTURE_FAILURES[kind];
+}
+
+/** FR-011-06: confirmation before deleting a taken photo that never reached Lychee. */
+export const DISCARD_PHOTO = "Delete this photo from the phone? It isn't in Lychee yet.";

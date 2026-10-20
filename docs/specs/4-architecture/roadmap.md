@@ -13,11 +13,14 @@ Candidate features for the proof of concept (each starts with a spec under `feat
 
 | Feature ID | Name | Notes |
 |------------|------|-------|
+| — | GPS for Android camera photos | Follow-up of Feature 011: the single-shot capture mode leaves the location out; options include adding the phone's location (Q-011-02 B) or another way to reach the full camera. |
+| 012 | Background uploads | Uploads continue after the app closes: Android `WorkManager`/foreground service, iOS background `URLSession`; takes over Feature 011's pending photos (Q-011-04). |
 
 ## Completed Features
 
 | Feature ID | Name | Completed | Notes |
 |------------|------|-----------|-------|
+| 011 | Camera upload | 2026-10-20 | Take photo in the "+" menu through the app's own native code (ADR-011-01): Android the camera app's single-shot mode, file uploaded untouched, no GPS yet (follow-up on the backlog); iOS Apple's camera with metadata and GPS. Photos kept in app storage until Lychee accepted them, re-queued after launch and on resume, Delete photo for stuck ones. 681 Vitest tests; owner confirmed on Android and iOS. See `features/011-camera-upload/`. |
 | 010 | Album creation | 2026-10-20 | Toolbar "+" (dropdown) with Upload photos and Create album, as in the web UI; Create album where the server allows it (`can_edit`), top level or inside regular albums, opens the new album; `POST Album` with the plain-text ID and 409 retries. 649 Vitest tests; owner confirmed on devices. See `features/010-album-creation/`. |
 | 009 | Usability fixes | 2026-10-20 | Back on the album list closes the app; white viewer buttons; launch race fixed (the first page waiting for the launch starts it) and stored credentials tried before any sign-in screen, no 60 s cooldown; Settings holds server, username and password with one Save, Sign in page removed; Android uploads keep the camera's file name with photo access (ADR-009-01). 603 Vitest tests; owner confirmed on Android and iOS. PR #12. See `features/009-usability-fixes/`. |
 | 008 | Photo info panel | 2026-10-20 | "i" button in the viewer opens a sheet (half height, draggable to full, follows swipes) with Lychee's About details: size, dates, description, tags, albums (`Photo/{id}/albums`, 7.4.0+), EXIF, location with a static map from Lychee's tile provider (ADR-008-01), license; server switches respected, server HTML shown as text. 575 Vitest tests at merge; owner confirmed on Android and iOS. PR #11. See `features/008-photo-info-panel/`. |

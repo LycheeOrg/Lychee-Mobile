@@ -12,6 +12,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { IonApp, IonRouterOutlet, useBackButton } from "@ionic/vue";
 import UploadSheet from "@/components/UploadSheet.vue";
 import { accountStore } from "@/stores/account";
+import { pendingCaptures } from "@/stores/pendingCaptures";
 import { session } from "@/stores/session";
 import { rootBackHandler } from "@/utils/backButton";
 
@@ -38,7 +39,10 @@ useBackButton(
 
 // FR-001-03, FR-002-03: re-check the stored server, then read the account;
 // a page that asked first may have started it already (FR-009-03).
-onMounted(() => {
-	void session.whenLaunched();
+onMounted(async () => {
+	await session.whenLaunched();
+	// FR-011-04: taken photos not yet in Lychee upload again, now and whenever the app returns.
+	await pendingCaptures.resume();
+	await CapacitorApp.addListener("resume", () => void pendingCaptures.resume());
 });
 </script>
