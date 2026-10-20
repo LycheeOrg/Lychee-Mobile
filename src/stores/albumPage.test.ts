@@ -418,3 +418,13 @@ describe("delete selected photos (FR-007-03)", () => {
 		expect(album.state.hasMore).toBe(false);
 	});
 });
+
+describe("map switch (FR-008-05)", () => {
+	it("keeps whether the album allows a map", async () => {
+		const album = createAlbumPage("a1", new Set());
+
+		await album.load(context(fakeGallery({ head: [ok(head({ mapAllowed: true }))], photos: [ok(page([photoTile("p1")], 1, 1))] })));
+
+		expect(album.state.mapAllowed).toBe(true);
+	});
+});

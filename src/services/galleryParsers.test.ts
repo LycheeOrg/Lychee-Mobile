@@ -80,6 +80,7 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			canUpload: false,
 			canDownload: true,
 			canDelete: false,
+			mapAllowed: false,
 		});
 	});
 
@@ -99,6 +100,7 @@ describe("parseAlbumHead (DO-003-04)", () => {
 			canUpload: false,
 			canDownload: true,
 			canDelete: false,
+			mapAllowed: false,
 		});
 	});
 
@@ -198,13 +200,14 @@ describe("parsePhotoPage (DO-003-02)", () => {
 
 describe("parseGallerySettings (DO-003-07)", () => {
 	it("reads the NSFW settings", () => {
-		expect(parseGallerySettings(galleryInit)).toEqual({ nsfwVisible: true, nsfwBlurred: false });
+		expect(parseGallerySettings(galleryInit)).toEqual({ nsfwVisible: true, nsfwBlurred: false, exifDisabled: false });
 	});
 
 	it("reads hidden and blurred", () => {
 		expect(parseGallerySettings({ ...galleryInit, are_nsfw_visible: false, is_nsfw_background_blurred: true })).toEqual({
 			nsfwVisible: false,
 			nsfwBlurred: true,
+			exifDisabled: false,
 		});
 	});
 
@@ -261,5 +264,19 @@ describe("photo MIME type (FR-007-06, DO-007-02)", () => {
 		const photo = { ...albumPhotos.photos[0], type: undefined };
 
 		expect(parsePhotoPage({ ...albumPhotos, photos: [photo] })?.items[0].mimeType).toBeNull();
+	});
+});
+
+describe("info panel switches (FR-008-01, FR-008-05, DO-008-02)", () => {
+	it("reads whether EXIF is disabled for all (S-008-04)", () => {
+		expect(parseGallerySettings({ ...galleryInit, is_exif_disabled: true })?.exifDisabled).toBe(true);
+	});
+
+	it("reads whether the album allows a map (S-008-06)", () => {
+		expect(parseAlbumHead({ ...albumHead, config: { ...albumHead.config, is_map_accessible: true } })?.mapAllowed).toBe(true);
+	});
+
+	it("gives every photo its details", () => {
+		expect(parsePhotoPage(albumPhotos)?.items[0].details.model).toBe("Pixel 11 Pro");
 	});
 });

@@ -75,6 +75,9 @@
 					:total="state.photoTotal"
 					:has-more="state.hasMore"
 					:load-more="more"
+					:info-allowed="!sensitiveDisplay.settings.exifDisabled"
+					:map-allowed="state.mapAllowed"
+					:gallery-context="currentGalleryContext"
 					@index="viewerIndex = $event"
 					@close="viewerStart = null"
 				/>

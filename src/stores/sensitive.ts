@@ -7,7 +7,7 @@ import { reactive } from "vue";
 import type { AlbumSection, AlbumTile, GallerySettings } from "@/services/galleryParsers";
 
 /** Used when `Gallery::Init` can't be read (FR-003-09). */
-export const DEFAULT_SETTINGS: GallerySettings = { nsfwVisible: true, nsfwBlurred: false };
+export const DEFAULT_SETTINGS: GallerySettings = { nsfwVisible: true, nsfwBlurred: false, exifDisabled: false };
 
 /** FR-003-09: the server's NSFW settings and whether the user chose Show, for every page. */
 export type SensitiveDisplay = { settings: GallerySettings; revealed: boolean };

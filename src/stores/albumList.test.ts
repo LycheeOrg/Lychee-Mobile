@@ -14,8 +14,8 @@ const SECTIONS: AlbumSection[] = [
 	{ key: "albums", albums: [albumTile("holidays"), albumTile("party", { isNsfw: true })] },
 	{ key: "shared", albums: [albumTile("secret", { isNsfw: true })] },
 ];
-const SHOWN = { nsfwVisible: true, nsfwBlurred: false };
-const HIDDEN = { nsfwVisible: false, nsfwBlurred: true };
+const SHOWN = { nsfwVisible: true, nsfwBlurred: false, exifDisabled: false };
+const HIDDEN = { nsfwVisible: false, nsfwBlurred: true, exifDisabled: false };
 
 describe("visibleSections (FR-003-09)", () => {
 	it("keeps everything when sensitive albums are visible", () => {

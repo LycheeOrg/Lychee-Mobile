@@ -30,6 +30,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		canUpload: false,
 		canDownload: false,
 		canDelete: false,
+		mapAllowed: false,
 		albums: [] as AlbumTile[],
 		photos: [] as PhotoTile[],
 		photoTotal: 0,
@@ -84,6 +85,7 @@ export function createAlbumPage(albumId: string, accepted: Set<string> = accepte
 		state.canUpload = head.canUpload;
 		state.canDownload = head.canDownload;
 		state.canDelete = head.canDelete;
+		state.mapAllowed = head.mapAllowed;
 		state.nextAlbumsPage = head.hasSubAlbums ? 1 : null;
 		state.nextPhotosPage = 1;
 		updateHasMore();

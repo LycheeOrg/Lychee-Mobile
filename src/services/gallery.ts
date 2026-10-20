@@ -8,12 +8,16 @@ import {
 	parseAlbumHead,
 	parseAlbumPage,
 	parseGallerySettings,
+	parseMapProvider,
+	parsePhotoAlbums,
 	parsePhotoPage,
 	parseRootAlbums,
 	type AlbumHead,
 	type AlbumTile,
 	type GallerySettings,
+	type MapProvider,
 	type Page,
+	type PhotoAlbum,
 	type PhotoTile,
 	type RootAlbums,
 } from "@/services/galleryParsers";
@@ -41,6 +45,9 @@ export type DeleteResult = { kind: "ok" | "unauthenticated" | "forbidden" | "fai
 /** FR-007-04: what file-transfer needs to fetch one photo's original. */
 export type DownloadRequest = { url: string; headers: Record<string, string> };
 
+/** DO-008-03: `unsupported` is Lychee before 7.4.0 (404). */
+export type PhotoAlbumsResult = { kind: "ok"; albums: readonly PhotoAlbum[] } | { kind: "unsupported" | "unauthenticated" | "failed" };
+
 export type Gallery = {
 	root: () => Promise<GalleryResult<RootAlbums>>;
 	settings: () => Promise<GalleryResult<GallerySettings>>;
@@ -52,6 +59,10 @@ export type Gallery = {
 	/** FR-007-03: `fromId` is the album or `"unsorted"`. */
 	deletePhotos: (photoIds: string[], fromId: string) => Promise<DeleteResult>;
 	downloadRequest: (photoId: string, fromId: string) => Promise<DownloadRequest>;
+	/** FR-008-06. */
+	photoAlbums: (photoId: string) => Promise<PhotoAlbumsResult>;
+	/** API-008-03: loaded once per server; `null` when it can't be read. */
+	mapProvider: () => Promise<MapProvider | null>;
 };
 
 /** Failures named by Lychee's `exception` field, whatever the status. */
@@ -61,6 +72,7 @@ const FAILURE_BY_EXCEPTION: Record<string, GalleryFailure> = {
 };
 const FAILURE_BY_STATUS: Record<number, GalleryFailure> = { 401: "unauthenticated", 403: "forbidden", 404: "not_found" };
 const DELETE_FAILURE_BY_STATUS: Record<number, DeleteResult["kind"]> = { 401: "unauthenticated", 403: "forbidden" };
+const ALBUMS_FAILURE_BY_STATUS: Record<number, "unsupported" | "unauthenticated"> = { 404: "unsupported", 401: "unauthenticated" };
 const UNLOCK_FAILURE_BY_STATUS: Record<number, UnlockFailure> = { 403: "wrong_password", 429: "throttled" };
 
 /**
@@ -69,6 +81,7 @@ const UNLOCK_FAILURE_BY_STATUS: Record<number, UnlockFailure> = { 403: "wrong_pa
  */
 export function createGallery(server: string, deps: LycheeHttpDeps = nativeDeps): Gallery {
 	const http = createLycheeHttp(server, deps);
+	let provider: MapProvider | null = null;
 
 	return {
 		root: () => load(http, "Albums", {}, parseRootAlbums),
@@ -86,6 +99,14 @@ export function createGallery(server: string, deps: LycheeHttpDeps = nativeDeps)
 				url: http.apiUrl("Zip", { photo_ids: photoId, variant: "ORIGINAL", from_id: fromId }),
 				headers,
 			};
+		},
+		photoAlbums: (photoId) => photoAlbums(http, photoId),
+		async mapProvider() {
+			if (provider === null) {
+				const result = await load(http, "Map::provider", {}, parseMapProvider);
+				provider = result.kind === "ok" ? result.value : null;
+			}
+			return provider;
 		},
 	};
 }
@@ -143,6 +164,22 @@ async function deletePhotos(http: LycheeHttp, photoIds: string[], fromId: string
 		return { kind: response.ok ? "ok" : (DELETE_FAILURE_BY_STATUS[response.status] ?? "failed") };
 	} catch {
 		return { kind: "unreachable" };
+	}
+}
+
+async function photoAlbums(http: LycheeHttp, photoId: string): Promise<PhotoAlbumsResult> {
+	try {
+		const result = await withTimeout(async (signal): Promise<PhotoAlbumsResult> => {
+			const response = await http.get(`Photo/${encodeURIComponent(photoId)}/albums`, signal);
+			if (!response.ok) {
+				return { kind: ALBUMS_FAILURE_BY_STATUS[response.status] ?? "failed" };
+			}
+			const albums = parsePhotoAlbums(await readJson(response));
+			return albums === undefined ? { kind: "failed" } : { kind: "ok", albums };
+		}, GALLERY_TIMEOUT_MS);
+		return result === TIMED_OUT ? { kind: "failed" } : result;
+	} catch {
+		return { kind: "failed" };
 	}
 }
 
