@@ -8,7 +8,7 @@ import { withOriginal, type OriginalMediaPlugin } from "@/services/originalMedia
 import type { UploadResult } from "@/services/upload";
 
 const PICKED = "content://media/picker/0/com.android.providers.media.photopicker/media/1275";
-const COPY = "file:///data/user/0/com.mlapaglia.lycheemobile/cache/uploads/1275.jpg";
+const COPY = "file:///data/user/0/dev.lycheeorg.mobile/cache/uploads/1275.jpg";
 
 function plugin(prepare: OriginalMediaPlugin["prepare"] = async () => ({ path: COPY, location: "present" })) {
 	return {

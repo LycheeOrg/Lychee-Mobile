@@ -76,7 +76,7 @@ This repository follows the same working agreements as [LycheeOrg/Lychee](https:
 - Commit keystores, `.p8`/`.p12` files, provisioning profiles, service-account JSON or any password (they are git-ignored; keep it that way).
 - Print secrets in workflow logs, or pass them to steps that do not need them.
 - Run `fastlane … alpha|production`, `match` in write mode, or anything that uploads to TestFlight/App Store Connect/Google Play from a local machine without the owner's explicit approval in the current session.
-- Change the app identifier (`com.mlapaglia.lycheemobile`, ADR-0003) without an ADR.
+- Change the app identifier (`dev.lycheeorg.mobile`, ADR-0004) without an ADR.
 
 ### Releases
 - Alpha ships automatically from `main`; production ships when the owner publishes a GitHub release tagged `vX.Y.Z` ([runbook-releases.md](docs/specs/5-operations/runbook-releases.md), ADR-0002).

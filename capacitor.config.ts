@@ -5,12 +5,9 @@
 
 import type { CapacitorConfig } from "@capacitor/cli";
 
-/**
- * The app identifier is a personal one for the proof of concept (ADR-0003);
- * it changes when the app moves to LycheeOrg's store accounts.
- */
+/** LycheeOrg's app identifier, from its domain lycheeorg.dev (ADR-0004). */
 const config: CapacitorConfig = {
-	appId: "com.mlapaglia.lycheemobile",
+	appId: "dev.lycheeorg.mobile",
 	appName: "Lychee",
 	webDir: "dist",
 	// NFR-006-01: the bridge's debug logging prints plugin results, which

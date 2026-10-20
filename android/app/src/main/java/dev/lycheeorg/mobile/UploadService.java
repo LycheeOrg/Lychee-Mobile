@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Lychee-Mobile contributors.
  */
 
-package com.mlapaglia.lycheemobile;
+package dev.lycheeorg.mobile;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

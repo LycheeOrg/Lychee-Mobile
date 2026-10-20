@@ -1,4 +1,4 @@
-package com.mlapaglia.lycheemobile;
+package dev.lycheeorg.mobile;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
