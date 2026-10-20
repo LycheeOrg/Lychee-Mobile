@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 011 (2026-10-20):** the "+" menu also offers Take photo, wherever Upload photos is (FR-011-01).
+
 ## Overview
 The toolbar's Upload button (Feature 005) becomes a "+" button, as in Lychee's web UI, opening a small menu with **Upload photos** and **Create album**. Create album asks for a title and calls `POST /api/v2/Album` with the current album as parent (or none on the album list), then opens the new album (Q-010-02). Each item follows the server's rights, so the app never offers what the server would refuse.
 

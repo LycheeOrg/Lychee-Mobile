@@ -2,4 +2,6 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <!-- ADR-011-01: photos taken in the app, kept until uploaded (FR-011-04). -->
+    <files-path name="captures" path="captures/" />
 </paths>

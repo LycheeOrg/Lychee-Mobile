@@ -200,3 +200,45 @@ describe("silent login during uploads (FR-006-02, S-006-09)", () => {
 		expect(queue.state.entries.map((entry) => entry.state)).toEqual(["failed", "waiting"]);
 	});
 });
+
+describe("settled files and removal (FR-011-04, FR-011-06)", () => {
+	it("tells listeners about each file once it has a result", async () => {
+		const queue = createUploadQueue({
+			upload: uploader([{ kind: "done" }, { kind: "failed" }, { kind: "skipped" }]),
+			onUnauthenticated: vi.fn(),
+		});
+		const settled: string[] = [];
+		queue.onSettled((entry) => settled.push(`${entry.file.name}:${entry.state}`));
+
+		queue.add([file("a"), file("b"), file("c")], "a1");
+		await settle(queue);
+
+		expect(settled).toEqual(["a:done", "b:failed", "c:skipped"]);
+	});
+
+	it("doesn't report a file that is sent again after a silent login", async () => {
+		const queue = createUploadQueue({
+			upload: uploader([{ kind: "unauthenticated" }, { kind: "done" }]),
+			onUnauthenticated: vi.fn(async () => true),
+		});
+		const settled: string[] = [];
+		queue.onSettled((entry) => settled.push(entry.state));
+
+		queue.add([file("a")], "a1");
+		await settle(queue);
+
+		expect(settled).toEqual(["done"]);
+	});
+
+	it("removes a failed file, and nothing else", async () => {
+		const queue = createUploadQueue({ upload: uploader([{ kind: "failed" }, { kind: "done" }]), onUnauthenticated: vi.fn() });
+		queue.add([file("a"), file("b")], "a1");
+		await settle(queue);
+		const [failed, done] = queue.state.entries;
+
+		queue.remove(done.id);
+		queue.remove(failed.id);
+
+		expect(queue.state.entries.map((entry) => entry.file.name)).toEqual(["b"]);
+	});
+});

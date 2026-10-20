@@ -22,6 +22,15 @@
 					<IonButton v-if="entry.state === 'failed'" slot="end" size="small" fill="outline" @click="uploadQueue.retry(entry.id)"
 						>Retry</IonButton
 					>
+					<IonButton
+						v-if="entry.state === 'failed' && pendingCaptures.isPending(entry.file.path)"
+						slot="end"
+						size="small"
+						fill="clear"
+						color="danger"
+						@click="discard(entry.file.path)"
+						>Delete photo</IonButton
+					>
 				</IonItem>
 			</IonList>
 			<IonButton v-if="hasFinished" expand="block" fill="clear" @click="uploadQueue.clearFinished()">Clear finished</IonButton>
@@ -32,6 +41,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import {
+	alertController,
 	IonButton,
 	IonButtons,
 	IonContent,
@@ -46,13 +56,29 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 import { close } from "ionicons/icons";
+import { pendingCaptures } from "@/stores/pendingCaptures";
 import { uploadQueue } from "@/stores/uploadQueue";
 import { uploadSheet } from "@/stores/uploadSheet";
-import { entryStatus } from "@/utils/uploadMessages";
+import { DISCARD_PHOTO, entryStatus } from "@/utils/uploadMessages";
 
 // FR-005-04, UI-005-02: every file's progress and result; Retry; Clear finished.
 const entries = computed(() => uploadQueue.state.entries);
 const hasFinished = computed(() => entries.value.some((entry) => entry.state === "done" || entry.state === "skipped"));
+
+/** FR-011-06: a taken photo that can't upload can be deleted, after a confirmation. */
+async function discard(path: string): Promise<void> {
+	const confirm = await alertController.create({
+		message: DISCARD_PHOTO,
+		buttons: [
+			{ text: "Cancel", role: "cancel" },
+			{ text: "Delete", role: "destructive" },
+		],
+	});
+	await confirm.present();
+	if ((await confirm.onDidDismiss()).role === "destructive") {
+		await pendingCaptures.discard(path);
+	}
+}
 </script>
 
 <style scoped>

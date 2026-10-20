@@ -36,6 +36,13 @@
         </provider>
     </application>
 
+    <!-- ADR-011-01: lets the app find the phone's camera app (Android 11+ package visibility); not a permission. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

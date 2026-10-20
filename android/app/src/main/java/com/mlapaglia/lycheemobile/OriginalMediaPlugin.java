@@ -25,6 +25,7 @@ import android.provider.OpenableColumns;
 import android.webkit.MimeTypeMap;
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.FileProvider;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -57,6 +58,9 @@ import java.util.regex.Pattern;
  * <p>NC-007-04 (Feature 007, ADR-007-01): saves downloaded files into {@code Pictures/Lychee} or
  * {@code Movies/Lychee}, where they outlive the app (Q-007-07).
  *
+ * <p>NC-011-01 (Feature 011, ADR-011-01): opens the phone's camera app, which writes the photo
+ * straight into the app's capture folder; the file stays until Lychee has it.
+ *
  * <p>NC-009-02 (Feature 009, ADR-009-01): with photo and video read access, picked files carry the
  * camera's file name from MediaStore instead of the picker's {@code <id>.<ext>}.
  */
@@ -82,6 +86,9 @@ public class OriginalMediaPlugin extends Plugin {
     private static final String PERMISSION_DENIED = "PERMISSION_DENIED";
     private static final String UNSAVEABLE = "UNSAVEABLE";
     private static final String GALLERY_FOLDER = "Lychee";
+    private static final String NO_CAMERA = "NO_CAMERA";
+    /** NC-011-01: file names JavaScript may ask for in the capture folder. */
+    private static final Pattern CAPTURE_NAME = Pattern.compile("[A-Za-z0-9_.-]{1,100}");
     /** Public since API 35 ({@code MediaStore.EXTRA_ACCEPT_ORIGINAL_MEDIA_FORMAT}): no transcoding. */
     private static final String EXTRA_ACCEPT_ORIGINAL_MEDIA_FORMAT = "android.provider.extra.ACCEPT_ORIGINAL_MEDIA_FORMAT";
     /**
@@ -186,6 +193,93 @@ public class OriginalMediaPlugin extends Plugin {
             }
         }
         call.resolve();
+    }
+
+    /** NC-011-01: whether a camera app can take a photo for the app. */
+    @PluginMethod
+    public void hasCamera(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("available", cameraIntent().resolveActivity(getContext().getPackageManager()) != null);
+        call.resolve(result);
+    }
+
+    /**
+     * NC-011-01: the camera app writes the photo to {@code files/captures/<name>} (made unique). The
+     * target path travels in the call's data, so a result after Android recreated the activity still
+     * finds its file.
+     */
+    @PluginMethod
+    public void capture(PluginCall call) {
+        String name = call.getString("name");
+        if (name == null || !CAPTURE_NAME.matcher(name).matches()) {
+            call.reject("A plain file name is required.", UNREADABLE);
+            return;
+        }
+        File dir = capturesDir();
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            call.reject("Can't create the capture folder.", UNREADABLE);
+            return;
+        }
+        File target = freeFileIn(dir, name);
+        Uri output = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", target);
+        Intent intent = cameraIntent();
+        if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+            call.reject("No camera app.", NO_CAMERA);
+            return;
+        }
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, output);
+        intent.setClipData(ClipData.newRawUri("", output));
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        call.getData().put("target", target.getAbsolutePath());
+        startActivityForResult(call, intent, "captureResult");
+    }
+
+    @ActivityCallback
+    private void captureResult(PluginCall call, ActivityResult result) {
+        if (call == null) {
+            return;
+        }
+        String path = call.getString("target");
+        File target = path == null ? null : new File(path);
+        if (target == null || !capturesDir().equals(target.getParentFile())) {
+            call.reject("Lost the photo's file.", UNREADABLE);
+            return;
+        }
+        if (result.getResultCode() != Activity.RESULT_OK || !target.isFile() || target.length() == 0) {
+            target.delete();
+            call.reject("capture canceled.", CANCELLED);
+            return;
+        }
+        JSObject file = new JSObject();
+        file.put("path", Uri.fromFile(target).toString());
+        file.put("name", target.getName());
+        file.put("mimeType", "image/jpeg");
+        file.put("size", target.length());
+        file.put("modifiedAt", target.lastModified());
+        call.resolve(file);
+    }
+
+    /** FR-011-04: deletes a taken photo once Lychee has it; only files in the capture folder. */
+    @PluginMethod
+    public void deleteCapture(PluginCall call) {
+        String path = call.getString("path");
+        String filePath = path == null ? null : Uri.parse(path).getPath();
+        if (filePath != null) {
+            File file = new File(filePath);
+            if (capturesDir().equals(file.getParentFile())) {
+                file.delete();
+            }
+        }
+        call.resolve();
+    }
+
+    private static Intent cameraIntent() {
+        return new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+    }
+
+    /** App-private and persistent, unlike the cache (FR-011-04). */
+    private File capturesDir() {
+        return new File(getContext().getFilesDir(), "captures");
     }
 
     /** NC-009-02: asks for photo and video read access; resolves {@code { granted }}, never rejects. */

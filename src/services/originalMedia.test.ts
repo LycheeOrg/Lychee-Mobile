@@ -17,6 +17,9 @@ function plugin(prepare: OriginalMediaPlugin["prepare"] = async () => ({ path: C
 		release: vi.fn<OriginalMediaPlugin["release"]>(async () => undefined),
 		saveToGallery: vi.fn<OriginalMediaPlugin["saveToGallery"]>(async () => undefined),
 		requestNameAccess: vi.fn<OriginalMediaPlugin["requestNameAccess"]>(async () => ({ granted: false })),
+		capture: vi.fn<OriginalMediaPlugin["capture"]>(),
+		deleteCapture: vi.fn<OriginalMediaPlugin["deleteCapture"]>(async () => undefined),
+		hasCamera: vi.fn<OriginalMediaPlugin["hasCamera"]>(async () => ({ available: true })),
 	};
 }
 

@@ -66,6 +66,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Lychee uses the camera to take photos and upload them to your gallery.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lychee adds your location to photos you take, as the Camera app does.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Lychee saves the photos you download to your library.</string>
 	<key>NSAppTransportSecurity</key>
