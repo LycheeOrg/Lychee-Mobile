@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Ready |
+| Status | Complete |
 | Last updated | 2026-10-20 |
 | Owners | mlapaglia |
 | Linked plan | [plan.md](plan.md) |

@@ -1,6 +1,6 @@
 # Feature 007 Tasks – Photo Download and Delete
 
-_Status: Testing_  
+_Status: Complete_  
 _Last updated: 2026-10-20_
 
 > Keep this checklist aligned with the feature plan increments. Stage tests before implementation, record verification commands beside each task, and prefer bite-sized entries (≤90 minutes).
@@ -55,7 +55,7 @@ _Last updated: 2026-10-20_
   _Verification commands:_ `npx vp test`, `npx vp check`, `npx vp run typecheck`, `npx vp run build`, `npx cap sync`, `cd android && ./gradlew assembleDebug`  
 
 ### I7 – Device spike (gate, moved to the start of I9, see plan Intent Log)
-- [ ] T-007-15 – On the Pixel and the iPhone, run a download from a dev-only trigger: a GPS-tagged HEIC from a private album and a video. Confirm the cookie works (NFR-007-06), the checksum equals Lychee's `original_checksum` (NFR-007-02) and location shows in the library. If either fails, stop and raise it with the owner (ADR-007-01). Runs through the real UI (Select → Download), not a dev-only trigger.  
+- [x] T-007-15 – On the Pixel and the iPhone, run a download from a dev-only trigger: a GPS-tagged HEIC from a private album and a video. Confirm the cookie works (NFR-007-06), the checksum equals Lychee's `original_checksum` (NFR-007-02) and location shows in the library. If either fails, stop and raise it with the owner (ADR-007-01). Runs through the real UI (Select → Download), not a dev-only trigger.  
   _Verification commands:_ `npm run android`, `npm run ios`; checksum via `shasum` on the exported file  
 
 ### I8 – UI
@@ -71,9 +71,9 @@ _Last updated: 2026-10-20_
   _Verification commands:_ `npx vp test src/stores/photoRights.test.ts` (red, then green), `npx vp test`, `npx vp check`, `npx vp run typecheck`, `npx vp run build`, `npx cap sync`  
 
 ### I9 – Device checks
-- [ ] T-007-19 – Android 9 (API 28) and Android 10 (API 29) emulators: permission prompt on 9, saving into `Pictures/Lychee` and `Movies/Lychee` on both (S-007-14).  
+- [x] T-007-19 – Android 9 (API 28) and Android 10 (API 29) emulators: permission prompt on 9, saving into `Pictures/Lychee` and `Movies/Lychee` on both (S-007-14).  
   _Verification commands:_ `npm run android` on each emulator  
-- [ ] T-007-20 – (Long-press selection confirmed by the owner on Android, 2026-10-20; the rest open.) Pixel 11 Pro and iPhone: S-007-01 … 13, 15 … 18, including a > 500 MB video, airplane mode mid-run, a denied library permission, delete in a regular album and in Unsorted, no Delete in Recent, and uninstalling the app on the Pixel (S-007-17).  
+- [x] T-007-20 – (Long-press confirmed on Android first; everything else confirmed by the owner, 2026-10-20.) Pixel 11 Pro and iPhone: S-007-01 … 13, 15 … 18, including a > 500 MB video, airplane mode mid-run, a denied library permission, delete in a regular album and in Unsorted, no Delete in Recent, and uninstalling the app on the Pixel (S-007-17).  
   _Verification commands:_ `npm run android`, `npm run ios`  
 
 ### I10 – Docs and drift gate

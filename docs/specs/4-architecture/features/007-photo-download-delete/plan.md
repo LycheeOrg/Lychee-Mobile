@@ -2,7 +2,7 @@
 
 _Linked specification:_ [spec.md](spec.md)  
 _Linked tasks:_ [tasks.md](tasks.md)  
-_Status:_ In progress  
+_Status:_ Complete  
 _Last updated:_ 2026-10-20
 
 > Guardrail: Keep this plan traceable back to the governing spec. Reference FR/NFR/Scenario IDs from `spec.md` where relevant, log any new high- or medium-impact questions in the feature's [open-questions.md](open-questions.md), and assume clarifications are resolved only when the spec's normative sections and, where applicable, ADRs under `docs/specs/6-decisions/` have been updated.
@@ -96,9 +96,9 @@ Run 2026-10-20 by the agent.
 
 ## Drift Gate Report
 
-Run 2026-10-20 by the agent, before the device checks were finished.
+Run 2026-10-20 by the agent; device checks confirmed by the owner the same day.
 
-**Preconditions:** T-007-00 … 14, 16 … 18, 21, 22 `[x]`; T-007-15, 19, 20 open (device checks). `npx vp check`, `npx vp run typecheck`, `npx vp test` (36 files, 513 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green; iOS simulator `xcodebuild` (CI flags) green after the native changes. `package.json` adds exactly the three approved packages, pinned (plus Ionic's transitive `@capacitor/synapse`).
+**Preconditions:** all tasks `[x]` (T-007-00 … 22). `npx vp check`, `npx vp run typecheck`, `npx vp test` (36 files, 513 tests), `npx vp run build`, `npx cap sync`, `./gradlew assembleDebug` green; iOS simulator `xcodebuild` (CI flags) green after the native changes. `package.json` adds exactly the three approved packages, pinned (plus Ionic's transitive `@capacitor/synapse`).
 
 | Requirement | Code | Evidence |
 |-------------|------|----------|
@@ -108,14 +108,14 @@ Run 2026-10-20 by the agent, before the device checks were finished.
 | FR-007-04 | `Gallery.downloadRequest`, `downloadRun.ts`, `downloadDevice.ts`, `DownloadBar.vue` | `downloadRun.test.ts` (14), `downloadDevice.test.ts` (5) |
 | FR-007-05 | `librarySaver.ts`, `OriginalMediaPlugin.saveToGallery` (`storage` alias on API 24–28), iOS usage string | `librarySaver.test.ts` (8); native code untested automatically |
 | FR-007-06 | `download.ts` (`downloadFileOf`, `transferFailure`) | `download.test.ts` (25) |
-| NFR-007-01 | file-transfer to the cache, native save | design; large-video check open (T-007-20) |
-| NFR-007-02 | `ORIGINAL`, unchanged bytes | checksum check open (T-007-15) |
+| NFR-007-01 | file-transfer to the cache, native save | design; large video on devices (T-007-20, owner) |
+| NFR-007-02 | `ORIGINAL`, unchanged bytes | checksum on devices (T-007-15, owner) |
 | NFR-007-03 | `package.json` | diff |
 | NFR-007-04 | injected deps throughout | Vitest |
 | NFR-007-05 | `deleteConfirmTitle`, `DELETE_CONFIRM_TEXT`, alert | `photoActionMessages.test.ts` (13) |
-| NFR-007-06 | `cookieHeader()`, `Cookie` header (omitted when empty) | `lycheeHttp.test.ts`, `gallery.test.ts`; private-album check open (T-007-15) |
+| NFR-007-06 | `cookieHeader()`, `Cookie` header (omitted when empty) | `lycheeHttp.test.ts`, `gallery.test.ts`; private albums on devices (T-007-15, owner) |
 
-**Not verified yet:** T-007-15 (private-album cookie and iOS checksum), T-007-19 (Android 9/10 emulators), T-007-20 (remaining Pixel and iPhone scenarios, incl. large video, airplane mode, permission denied, delete in Unsorted, uninstall). The feature stays in Testing until the owner reports them.
+**Device checks:** T-007-15, 19 and 20 passed, as reported by the owner on 2026-10-20 ("they all tested fine"): private-album downloads with the cookie and unchanged originals on both platforms, Android 9/10, and the rest of the checklist. The agent didn't see these runs; the evidence is the owner's report.
 
 **Divergences (all recorded above and in the spec):** delete and the download request moved onto the `Gallery` facade instead of a separate `photoActions` service; FR-007-06 takes the extension from the original URL first (RAW photos); next-page recomputation after a delete (S-007-19); the device spike moved into I9; Android long press through `contextmenu`; selection offered whatever the rights with disabled buttons (owner).
 
@@ -123,3 +123,4 @@ Run 2026-10-20 by the agent, before the device checks were finished.
 - Android's WebView long press cancels the pointer at about 400 ms; press-and-hold must also listen to `contextmenu`.
 - Hidden actions look like a broken gesture; checking the account's rights first would have separated the two causes sooner.
 - Page-number paging and local deletes interact; any feature that removes items from a paged list must recompute the next page.
+- 2026-10-20: owner reported all remaining device checks passed (T-007-15, 19, 20); feature closed.
