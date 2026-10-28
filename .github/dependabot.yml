@@ -1,3 +1,6 @@
+# Every ecosystem skips patch releases: Dependabot only opens version-update
+# PRs for minor and major releases. Security updates are not affected by
+# `ignore` and still arrive for patches.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -8,6 +11,9 @@ updates:
       actions-deps:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
 
   - package-ecosystem: npm
     directory: /
@@ -30,6 +36,8 @@ updates:
       development-dependencies:
         dependency-type: "development"
     ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
       # Same as LycheeOrg/Lychee: vue-tsc and Vite+ are not on TypeScript 7 yet.
       - dependency-name: "typescript"
         versions: [">=7.0.0"]
@@ -42,6 +50,9 @@ updates:
       fastlane:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
 
   - package-ecosystem: gradle
     directory: /android
@@ -52,6 +63,8 @@ updates:
         patterns:
           - "*"
     ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
       # Gradle 9.6 removed an internal API that the Android Gradle Plugin 8.x
       # uses, and Capacitor 8's Android template is on AGP 8.13. Stay on the
       # Gradle 8.14 line (8.14.6+ carries the 2026-10 security fixes) until the
