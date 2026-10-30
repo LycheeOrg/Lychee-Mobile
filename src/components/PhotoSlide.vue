@@ -19,15 +19,7 @@
 
 		<template v-else>
 			<img v-if="photo.thumb !== null && !loaded" class="backdrop" :src="photo.thumb.src" alt="" />
-			<div
-				class="swiper-zoom-container"
-				@pointerdown="onPointerDown"
-				@pointermove="hold.move($event.clientX, $event.clientY)"
-				@pointerup="hold.up()"
-				@pointercancel="hold.cancel()"
-				@pointerleave="hold.cancel()"
-				@contextmenu.prevent
-			>
+			<div class="swiper-zoom-container" @contextmenu.prevent>
 				<img class="image" :class="{ loaded }" :src="image.url" :alt="photo.title" @load="loaded = true" @error="failed = true" />
 			</div>
 			<video
@@ -40,25 +32,35 @@
 				loop
 				@error="playingLive = false"
 			/>
-			<span v-if="photo.liveUrl !== null" class="live-badge" aria-label="Live photo"><IonIcon :icon="radioButtonOn" /> LIVE</span>
+			<button
+				v-if="photo.liveUrl !== null"
+				type="button"
+				class="live-badge swiper-no-swiping"
+				:class="{ playing: playingLive }"
+				aria-label="Live photo"
+				:aria-pressed="playingLive"
+				:disabled="zoomed"
+				@click="playingLive = !playingLive"
+			>
+				<IonIcon :icon="radioButtonOn" /> LIVE
+			</button>
 			<p v-if="failed" class="message overlay-message">{{ IMAGE_FAILED }}</p>
 		</template>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { IonIcon } from "@ionic/vue";
 import { radioButtonOn } from "ionicons/icons";
 import type { PhotoTile } from "@/services/galleryParsers";
 import { displayVariant, videoPoster, videoSource, zoomVariant } from "@/utils/photoVariant";
-import { createPressAndHold } from "@/utils/pressAndHold";
 
 const VIDEO_FAILED = "This video can't be played on this device.";
 const NOT_SHOWABLE = "This file can't be shown.";
 const IMAGE_FAILED = "Couldn't load this photo.";
 
-// FR-004-03 … 06: one photo of the viewer.
+// FR-004-03 … 06: one photo of the viewer; FR-013-01: the LIVE button toggles the clip.
 const props = defineProps<{ photo: PhotoTile; active: boolean; useOriginal: boolean; zoomed: boolean }>();
 
 const loaded = ref(false);
@@ -73,28 +75,13 @@ const image = computed(() => {
 const videoSrc = computed(() => videoSource(props.photo.variants));
 const poster = computed(() => videoPoster(props.photo.variants));
 
-const hold = createPressAndHold({
-	onStart: () => {
-		playingLive.value = true;
-	},
-	onEnd: () => {
-		playingLive.value = false;
-	},
-});
-
-function onPointerDown(event: PointerEvent): void {
-	if (props.photo.liveUrl !== null && !props.zoomed) {
-		hold.down(event.clientX, event.clientY);
-	}
-}
-
-// FR-004-05: leaving the slide pauses a video; FR-004-06: and stops a live clip.
+// FR-004-05: leaving the slide pauses a video; FR-013-01: leaving or zooming shows the still again.
 watch(
 	() => props.active,
 	(active) => {
 		if (!active) {
 			videoEl.value?.pause();
-			hold.cancel();
+			playingLive.value = false;
 		}
 	},
 );
@@ -102,12 +89,10 @@ watch(
 	() => props.zoomed,
 	(zoomed) => {
 		if (zoomed) {
-			hold.cancel();
+			playingLive.value = false;
 		}
 	},
 );
-
-onBeforeUnmount(() => hold.cancel());
 </script>
 
 <style scoped>
@@ -163,12 +148,21 @@ onBeforeUnmount(() => hold.cancel());
 	gap: 4px;
 	align-items: center;
 	padding: 2px 8px;
+	border: 0;
 	border-radius: 12px;
 	background: rgba(0, 0, 0, 0.5);
 	color: #fff;
 	font-size: 0.75rem;
 	font-weight: 600;
-	pointer-events: none;
+}
+
+.live-badge.playing {
+	background: #fff;
+	color: #000;
+}
+
+.live-badge:disabled {
+	opacity: 0.5;
 }
 
 .message {
