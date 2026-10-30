@@ -41,6 +41,21 @@ describe("PhotoSlide LIVE button (FR-013-01)", () => {
 		expect(button.attributes("aria-pressed")).toBe("false");
 	});
 
+	it("keeps the still visible until the clip plays (S-013-07)", async () => {
+		const wrapper = slide();
+		const button = wrapper.get("button.live-badge");
+
+		await button.trigger("click");
+		expect(wrapper.get("video.live").classes()).not.toContain("shown");
+
+		await wrapper.get("video.live").trigger("playing");
+		expect(wrapper.get("video.live").classes()).toContain("shown");
+
+		await button.trigger("click");
+		await button.trigger("click");
+		expect(wrapper.get("video.live").classes()).not.toContain("shown");
+	});
+
 	it("keeps Swiper from treating the tap as a swipe, tap or double tap", () => {
 		expect(slide().get("button.live-badge").classes()).toContain("swiper-no-swiping");
 	});

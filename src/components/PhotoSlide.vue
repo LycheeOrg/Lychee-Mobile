@@ -25,11 +25,13 @@
 			<video
 				v-if="playingLive && photo.liveUrl !== null"
 				class="live"
+				:class="{ shown: liveShown }"
 				:src="photo.liveUrl"
 				muted
 				playsinline
 				autoplay
 				loop
+				@playing="liveShown = true"
 				@error="playingLive = false"
 			/>
 			<button
@@ -66,6 +68,9 @@ const props = defineProps<{ photo: PhotoTile; active: boolean; useOriginal: bool
 const loaded = ref(false);
 const failed = ref(false);
 const playingLive = ref(false);
+// FR-013-01: the clip stays invisible until its first frame plays, so the
+// WebView's empty-video placeholder never shows over the still.
+const liveShown = ref(false);
 const videoEl = ref<HTMLVideoElement | null>(null);
 
 const image = computed(() => {
@@ -93,6 +98,11 @@ watch(
 		}
 	},
 );
+watch(playingLive, (playing) => {
+	if (!playing) {
+		liveShown.value = false;
+	}
+});
 </script>
 
 <style scoped>
@@ -123,6 +133,11 @@ watch(
 
 .live {
 	pointer-events: none;
+	opacity: 0;
+}
+
+.live.shown {
+	opacity: 1;
 }
 
 .image {

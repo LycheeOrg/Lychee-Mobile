@@ -24,7 +24,7 @@ In the viewer, live and motion photos play their clip only while the photo is pr
 
 | ID | Requirement | Success path | Validation path | Failure path | Telemetry & traces | Source |
 |----|-------------|--------------|-----------------|--------------|--------------------|--------|
-| FR-013-01 | The LIVE label is a toggle button. | Photos with `live_photo_url` show a "◎ LIVE" button (`aria-pressed`). Tapping it plays the clip in a muted, `playsinline`, looping `<video>` over the still and fills the button white; tapping it again removes the clip and shows the still. Taps on the button are neither swipes nor viewer taps (Swiper's `swiper-no-swiping`), so they don't toggle the overlay or zoom. Press and hold on the photo no longer plays the clip; its long-press menu stays suppressed. | While zoomed the button is disabled (dimmed); zooming in stops the clip. Swiping to another photo stops the clip; coming back shows the still. | Clip error → the still and the button returns to off, no message. | — | Owner 2026-10-30; amends FR-004-06 |
+| FR-013-01 | The LIVE label is a toggle button. | Photos with `live_photo_url` show a "◎ LIVE" button (`aria-pressed`). Tapping it plays the clip in a muted, `playsinline`, looping `<video>` over the still and fills the button white at once; the clip stays invisible (`opacity: 0`) until its `playing` event, so the still shows until the first frame and the WebView's empty-video placeholder (a grey square with a play icon on Android) never appears; tapping it again removes the clip and shows the still. Taps on the button are neither swipes nor viewer taps (Swiper's `swiper-no-swiping`), so they don't toggle the overlay or zoom. Press and hold on the photo no longer plays the clip; its long-press menu stays suppressed. | While zoomed the button is disabled (dimmed); zooming in stops the clip. Swiping to another photo stops the clip; coming back shows the still. | Clip error → the still and the button returns to off, no message. | — | Owner 2026-10-30; amends FR-004-06 |
 
 ## Non-Functional Requirements
 
@@ -58,9 +58,10 @@ The tablet layout is the same.
 | S-013-04 | Clip fails to load → still, button off. |
 | S-013-05 | Tap or double tap LIVE → the overlay doesn't toggle and the photo doesn't zoom (device check). |
 | S-013-06 | Press and hold the photo → nothing plays, no image menu. |
+| S-013-07 | Tap LIVE → the still stays until the clip plays, then the clip replaces it with no grey square or play icon in between. |
 
 ## Test Strategy
-- **Component (Vitest):** `src/components/PhotoSlide.test.ts` covers S-013-01 … 04 and 06, the `swiper-no-swiping` class, and no button without a clip.
+- **Component (Vitest):** `src/components/PhotoSlide.test.ts` covers S-013-01 … 04, 06 and 07, the `swiper-no-swiping` class, and no button without a clip.
 - **Native:** S-013-05 on the Pixel and the iPhone (Swiper's touch handling isn't simulated in jsdom).
 
 ## Interface & Contract Catalogue
