@@ -11,6 +11,8 @@
 
 > Guardrail: This specification is the single normative source of truth for the feature. Track high- and medium-impact questions in the feature's [open-questions.md](open-questions.md), encode resolved answers directly in the Requirements/NFR/Behaviour/UI/Telemetry sections below (no per-feature `## Clarifications` sections), and use ADRs under `docs/specs/6-decisions/` for architecturally significant clarifications (referencing their IDs from the relevant spec sections).
 
+> **Amended by Feature 013 (2026-10-30):** the LIVE label is a button that starts and stops the looping clip; press and hold no longer plays it (FR-013-01 replaces the press-and-hold part of FR-004-06).
+
 ## Overview
 Tapping a photo in an album (Feature 003) opens it full screen. The user swipes left and right through the album's photos, zooms into details, plays videos, and plays the motion of live and motion photos. Everything the viewer shows is already in `Album::photos` (size-variant URLs, `live_photo_url`, type); Lychee v2 has no single-photo endpoint, so the viewer is a full-screen modal over the album page and works from that page's photo list (Q-004-04). Swiping, zooming and keeping only nearby slides in the DOM use Swiper 14.3.0 (ADR-004-01), the only new dependency.
 

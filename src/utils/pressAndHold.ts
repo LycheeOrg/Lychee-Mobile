@@ -18,7 +18,7 @@ export type PressAndHold = {
 };
 
 /**
- * FR-004-06: press and hold for `delayMs` without moving more than
+ * FR-007-01: press and hold for `delayMs` without moving more than
  * `tolerancePx` starts; releasing, cancelling or moving away ends. Pointer
  * coordinates are passed in, so it works with any event source.
  */

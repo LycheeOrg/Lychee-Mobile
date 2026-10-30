@@ -6,6 +6,7 @@ High-level planning document for Lychee-Mobile features.
 
 | Feature ID | Name | Status | Priority | Assignee | Started | Updated | Progress |
 |------------|------|--------|----------|----------|---------|---------|----------|
+| 013 | Live photo toggle | Testing | Medium | mlapaglia | 2026-10-30 | 2026-10-30 | LIVE label is a button that starts and stops the looping clip, replacing press and hold (amends FR-004-06). Code and tests done; device check open. See `features/013-live-photo-toggle/`. |
 
 ## Backlog
 
