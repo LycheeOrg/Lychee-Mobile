@@ -29,6 +29,8 @@ npm run open:android       # or: npm run open:ios, to work in the native IDEs
 
 Android builds need `JAVA_HOME` pointing at JDK 21 and the Android SDK's `platform-tools` on `PATH`.
 
+The app icons and splash images in `android/` and `ios/` come from the Lychee logo in `assets/lychee-logo.png`. After changing it, run `scripts/generate-app-assets.sh` (needs ImageMagick 7).
+
 ## Checks
 
 ```sh
