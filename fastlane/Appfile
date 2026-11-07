@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Lychee-Mobile contributors.
 
-# LycheeOrg app identifier (ADR-0004).
-app_identifier("dev.lycheeorg.mobile")
-package_name("dev.lycheeorg.mobile")
+# LycheeOrg app identifier (ADR-0005).
+app_identifier("dev.lycheeorg.lychee")
+package_name("dev.lycheeorg.lychee")
 team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]

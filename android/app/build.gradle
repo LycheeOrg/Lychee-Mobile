@@ -6,10 +6,10 @@ apply plugin: 'com.android.application'
 def releaseKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
 
 android {
-    namespace = "dev.lycheeorg.mobile"
+    namespace = "dev.lycheeorg.lychee"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "dev.lycheeorg.mobile"
+        applicationId "dev.lycheeorg.lychee"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode((System.getenv("VERSION_CODE") ?: "1") as Integer)

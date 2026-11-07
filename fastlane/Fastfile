@@ -11,7 +11,7 @@
 
 default_platform(:android)
 
-APP_ID = "dev.lycheeorg.mobile"
+APP_ID = "dev.lycheeorg.lychee"
 
 def version_name
   ENV.fetch("VERSION_NAME")
