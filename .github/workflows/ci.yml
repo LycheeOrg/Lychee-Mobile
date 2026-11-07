@@ -88,9 +88,34 @@ jobs:
           vp run build
           npx cap sync android
 
+      - name: Name the build
+        id: build
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          short_sha=${SHA::7}
+          if [ -n "$PR_NUMBER" ]; then
+            label="pr${PR_NUMBER}-${short_sha}"
+          else
+            label="main-${short_sha}"
+          fi
+          echo "VERSION_NAME=${version}-${label}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "artifact=lychee-android-${label}" >> "$GITHUB_OUTPUT"
+
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
 
   ios:
     name: iOS simulator build

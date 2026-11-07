@@ -47,6 +47,16 @@ Until the secrets below exist, each release job prints a notice and skips, so th
 5. **First upload is manual:** build `bundleRelease` locally or download the CI artifact, upload it once to Internal testing in the console; afterwards fastlane takes over.
 6. Internal testing → Testers: add the tester list.
 
+## Pull request builds (sideload)
+
+Every CI run (pull requests and pushes to `main`) uploads the Android debug APK as a workflow artifact, kept 14 days. It needs no secrets, so pull requests from forks get one too.
+
+- **Download:** the PR's Checks tab → CI → Summary → Artifacts → `lychee-android-pr<N>-<sha>` (signed-in GitHub users only). It arrives as a zip containing `app-debug.apk`.
+- **Install:** copy the APK to the phone and open it, allowing "Install unknown apps" for the browser or file manager when asked; or `adb install -r app-debug.apk`.
+- **Identity:** debug builds use the app ID `dev.lycheeorg.lychee.debug` and the name "Lychee Dev" (`android/app/build.gradle` `applicationIdSuffix`, `android/app/src/debug/res/values/strings.xml`), so they install beside the store app with their own settings and stored credentials. The version reads `<package.json version>-pr<N>-<sha>-debug`.
+- **Updating:** each CI runner signs with a freshly generated debug key, so a newer artifact won't install over an older one: uninstall "Lychee Dev" first.
+- iOS has no sideload artifact: an iPhone only installs signed builds (TestFlight).
+
 ## Cutting a production release
 
 1. Make sure `main` is green and the alpha of that commit was tested.
