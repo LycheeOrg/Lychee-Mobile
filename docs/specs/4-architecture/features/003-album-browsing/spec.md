@@ -75,7 +75,7 @@ With a server connected (Feature 001) and the user signed in or browsing as a gu
 ┌──────────────────────────────┐    ┌──────────────────────────────┐    ┌──────────────────────────────┐
 │ Lychee                    ⚙  │    │ ‹          Party             │    │ ‹          Settings          │
 │ This gallery needs a         │    │ This album may contain       │    │ Server address               │
-│ password.                    │    │ sensitive content.           │    │ [https://lapaglia.pics     ] │
+│ password.                    │    │ sensitive content.           │    │ [https://photos.example.com] │
 │ [Password                  ] │    │ [         Continue         ] │    │ ✓ Connected to Lychee 7.11.1 │
 │ [          Unlock          ] │    │ [           Back           ] │    │ [          Connect         ] │
 │       Sign in instead        │    └──────────────────────────────┘    │ Signed in as matt [Sign out] │
@@ -109,7 +109,7 @@ With a server connected (Feature 001) and the user signed in or browsing as a gu
 - **Units (Vitest):** parsers for the root list, album head, album and photo pages and `Gallery::Init` against fixtures (NFR-003-03); the gallery service's error mapping (404, 401, 403, `PasswordRequiredException`, `GalleryPasswordRequiredException`, 429, network, timeout), unlock calls; `lycheeHttp` 419 retry; version comparison; NSFW filtering.
 - **Store (Vitest):** album list and album page models: first load, sub-album pages then photo pages, end of pages, refresh, failure and retry of a later page, unlock flows, NSFW warning memory, sign-in handoff, no password in state.
 - **Lychee API contract:** fixtures written from Lychee 7.11.1's resource classes (`RootAlbumResource`, `ThumbAlbumResource`, `ThumbResource`, `HeadAbstractAlbumResource`, `PaginatedAlbumsResource`, `PaginatedPhotosResource`, `PhotoResource`, `SizeVariantResource`, `InitConfig`) with the error bodies' real shape; neither test server shows albums to a guest, so the device checks against real servers confirm them.
-- **Native:** Pixel 11 Pro and iOS through Xcode against `lapaglia.pics` (signed in) and the LAN server; scroll a large smart album (NFR-003-02).
+- **Native:** Pixel 11 Pro and iOS through Xcode against a public https Lychee server (signed in) and the LAN server; scroll a large smart album (NFR-003-02).
 
 ## Interface & Contract Catalogue
 

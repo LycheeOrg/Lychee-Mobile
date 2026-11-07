@@ -28,8 +28,8 @@ Until the secrets below exist, each release job prints a notice and skips, so th
    - `ASC_KEY_ID` (Key ID), `ASC_ISSUER_ID` (Issuer ID)
    - `ASC_KEY_P8_BASE64`: `base64 -i AuthKey_XXXX.p8 | pbcopy`
 4. Signing with fastlane match:
-   - Create a **private** repository for certificates, e.g. `mlapaglia/Lychee-Mobile-certs`; `MATCH_GIT_URL` = its HTTPS URL.
-   - `MATCH_GIT_BASIC_AUTHORIZATION`: `printf 'mlapaglia:<fine-grained PAT with contents read/write on that repo>' | base64`
+   - Create a **private** repository for certificates, e.g. `LycheeOrg/Lychee-Mobile-certs`; `MATCH_GIT_URL` = its HTTPS URL.
+   - `MATCH_GIT_BASIC_AUTHORIZATION`: `printf '<github-username>:<fine-grained PAT with contents read/write on that repo>' | base64`
    - `MATCH_PASSWORD`: a new passphrase that encrypts the certificates.
    - Once, on a Mac with Ruby ≥ 3.2: `bundle install && MATCH_GIT_URL=… bundle exec fastlane match appstore` (creates the distribution certificate and profile and pushes them, encrypted). This is a write operation: owner only.
 5. TestFlight → Internal Testing: create a group and add testers.

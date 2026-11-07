@@ -61,11 +61,11 @@ Phone:
 │                              │   │──────────── ─── ─────────────│    │ ⇪ Oct 20, 2026, 8:18:59 AM   │
 │                              │   │ About                        │    │ 📷 Oct 20, 2026, 8:18:13 AM   │
 │                              │   │ ▣ 1332.jpg                   │    │ Albums                       │
-│                              │   │   3064 x 4080   4.74 MB      │    │ Mallory LaPaglia             │
+│                              │   │   3064 x 4080   4.74 MB      │    │ Summer 2026                  │
 │                              │   │ ⇪ Oct 20, 2026, 8:18:59 AM   │    │ EXIF data                    │
 │                              │   │ 📷 Oct 20, 2026, 8:18:13 AM   │    │ 📷 Google Pixel 11 Pro        │
 │                              │   │ Albums                       │    │ ◎ Pixel 11 Pro back camera…  │
-│                              │   │ Mallory LaPaglia             │    │ ƒ / 1.7         ⟂ 7 mm       │
+│                              │   │ Summer 2026                  │    │ ƒ / 1.7         ⟂ 7 mm       │
 │                              │   │ EXIF data                    │    │ ⏱ 1/649 sec     ISO 35       │
 │                              │   │ …                            │    │ Location                     │
 └──────────────────────────────┘   └──────────────────────────────┘    │ ┌──────────────────────────┐ │

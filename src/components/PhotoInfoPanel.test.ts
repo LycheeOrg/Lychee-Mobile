@@ -14,7 +14,7 @@ import albumPhotos from "@/services/__fixtures__/lychee-7.11.1/album-photos.json
 const photos = parsePhotoPage(albumPhotos)?.items ?? [];
 const pixel = photos[0];
 const OSM: MapProvider = { layer: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: "© OpenStreetMap contributors" };
-const ALBUMS: PhotoAlbumsState = { kind: "ok", albums: [{ id: "a1", title: "Mallory LaPaglia" }] };
+const ALBUMS: PhotoAlbumsState = { kind: "ok", albums: [{ id: "a1", title: "Summer 2026" }] };
 
 function panel(
 	props: { photo?: PhotoTile; albums?: PhotoAlbumsState; mapProvider?: MapProvider | null; mapAllowed?: boolean; platform?: string } = {},
@@ -42,7 +42,7 @@ describe("PhotoInfoPanel (FR-008-02 … 06)", () => {
 			"Oct 20, 2026, 8:18:59 AM America/Indiana/Indianapolis",
 			"Oct 20, 2026, 8:18:13 AM -04:00",
 			"At the park",
-			"Mallory LaPaglia",
+			"Summer 2026",
 			"Google Pixel 11 Pro",
 			"Pixel 11 Pro back camera 6.9mm f/1.68",
 			"ƒ / 1.7",
