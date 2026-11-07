@@ -2,14 +2,15 @@ apply plugin: 'com.android.application'
 
 // Release builds get their version and signing from the environment, set by
 // fastlane in CI (docs/specs/5-operations/runbook-releases.md, ADR-0002).
-// Local and debug builds keep the defaults and debug signing.
+// Local and debug builds keep the defaults and debug signing; CI sets the
+// version of the pull request APK.
 def releaseKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
 
 android {
-    namespace = "dev.lycheeorg.mobile"
+    namespace = "dev.lycheeorg.lychee"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "dev.lycheeorg.mobile"
+        applicationId "dev.lycheeorg.lychee"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode((System.getenv("VERSION_CODE") ?: "1") as Integer)
@@ -32,6 +33,12 @@ android {
         }
     }
     buildTypes {
+        // Debug builds (local and the CI artifact for pull requests) install
+        // beside the store app instead of clashing with its signature.
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
         release {
             if (releaseKeystore) {
                 signingConfig signingConfigs.release

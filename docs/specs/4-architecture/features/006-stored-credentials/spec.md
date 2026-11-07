@@ -49,7 +49,7 @@ Owner request (2026-10-19): "let's change this so the username/password are stor
  Password rejected during a silent login (FR-006-03)
 ┌──────────────────────────────┐
 │ ‹        Sign in             │
-│          lapaglia.pics       │
+│          photos.example.com  │
 │ Your password changed or was │
 │ reset. Sign in again.        │
 │ Username                     │

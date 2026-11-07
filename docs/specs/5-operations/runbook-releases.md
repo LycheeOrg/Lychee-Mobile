@@ -23,19 +23,19 @@ Until the secrets below exist, each release job prints a notice and skips, so th
 
 ### Apple (iOS)
 1. Apple Developer Program membership; note the **Team ID** → secret `APPLE_TEAM_ID`.
-2. App Store Connect → Apps → New App with bundle ID `dev.lycheeorg.mobile` (ADR-0004; register the identifier first under Certificates, Identifiers & Profiles).
+2. App Store Connect → Apps → New App with bundle ID `dev.lycheeorg.lychee` (ADR-0005; register the identifier first under Certificates, Identifiers & Profiles).
 3. App Store Connect → Users and Access → Integrations → App Store Connect API → new key with the **App Manager** role:
    - `ASC_KEY_ID` (Key ID), `ASC_ISSUER_ID` (Issuer ID)
    - `ASC_KEY_P8_BASE64`: `base64 -i AuthKey_XXXX.p8 | pbcopy`
 4. Signing with fastlane match:
-   - Create a **private** repository for certificates, e.g. `mlapaglia/Lychee-Mobile-certs`; `MATCH_GIT_URL` = its HTTPS URL.
-   - `MATCH_GIT_BASIC_AUTHORIZATION`: `printf 'mlapaglia:<fine-grained PAT with contents read/write on that repo>' | base64`
+   - Create a **private** repository for certificates, e.g. `LycheeOrg/Lychee-Mobile-certs`; `MATCH_GIT_URL` = its HTTPS URL.
+   - `MATCH_GIT_BASIC_AUTHORIZATION`: `printf '<github-username>:<fine-grained PAT with contents read/write on that repo>' | base64`
    - `MATCH_PASSWORD`: a new passphrase that encrypts the certificates.
    - Once, on a Mac with Ruby ≥ 3.2: `bundle install && MATCH_GIT_URL=… bundle exec fastlane match appstore` (creates the distribution certificate and profile and pushes them, encrypted). This is a write operation: owner only.
 5. TestFlight → Internal Testing: create a group and add testers.
 
 ### Google (Android)
-1. Google Play Console developer account; create the app with package `dev.lycheeorg.mobile` (ADR-0004).
+1. Google Play Console developer account; create the app with package `dev.lycheeorg.lychee` (ADR-0005).
 2. Upload keystore (keep a backup outside the repository):
    ```sh
    keytool -genkeypair -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 4096 -validity 10000
@@ -44,8 +44,32 @@ Until the secrets below exist, each release job prints a notice and skips, so th
    - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`upload`), `ANDROID_KEY_PASSWORD`
 3. Enrol in Play App Signing (Google holds the app signing key; the keystore above is the upload key).
 4. Google Cloud: service account with access to the Play Console app (Users and permissions → invite the service account, release permissions), JSON key → `PLAY_STORE_SERVICE_ACCOUNT_JSON` (the whole file content).
-5. **First upload is manual:** build `bundleRelease` locally or download the CI artifact, upload it once to Internal testing in the console; afterwards fastlane takes over.
+5. **First upload is manual:** Google's API cannot upload to an app that has never had a bundle. Build a release bundle signed with the upload key (the pull-request CI artifact is a debug APK and cannot be used), upload it once to Internal testing in the console; afterwards fastlane takes over.
+   ```sh
+   # Prompt for the passwords without echo, so they stay out of shell history (works in bash and zsh).
+   printf 'Keystore password: '; read -rs ANDROID_KEYSTORE_PASSWORD; echo
+   printf 'Key password: '; read -rs ANDROID_KEY_PASSWORD; echo
+   export ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD
+   export ANDROID_KEYSTORE_PATH=/path/to/upload.keystore ANDROID_KEY_ALIAS=upload VERSION_CODE=1 VERSION_NAME=0.1.0
+
+   # Stops at the first failure, so Gradle never bundles stale web assets.
+   npx vp run build && npx cap sync android && (cd android && ./gradlew bundleRelease)
+   # → android/app/build/outputs/bundle/release/app-release.aab
+
+   unset ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD
+   ```
+   The automated uploads use the `release.yml` run number as the version code, so it must already be above the manual `VERSION_CODE`. If `release.yml` has never run, start it once (Actions → Release → Run workflow) before adding the Android secrets; it skips without them and uses up run number 1. A re-run keeps its run number, so only a new run moves the number on.
 6. Internal testing → Testers: add the tester list.
+
+## Pull request builds (sideload)
+
+Every CI run (pull requests and pushes to `main`) uploads the Android debug APK as a workflow artifact, kept 14 days. It needs no secrets, so pull requests from forks get one too.
+
+- **Download:** the PR's Checks tab → CI → Summary → Artifacts → `lychee-android-pr<N>-<sha>` (signed-in GitHub users only). It arrives as a zip containing `app-debug.apk`. `<sha>` is the PR's head commit, so it matches the PR's commit list; the APK itself is built from that commit merged into the PR's base branch, usually `main` (what GitHub Actions checks out for pull requests).
+- **Install:** copy the APK to the phone and open it, allowing "Install unknown apps" for the browser or file manager when asked; or `adb install -r app-debug.apk`.
+- **Identity:** debug builds use the app ID `dev.lycheeorg.lychee.debug` and the name "Lychee Dev" (`android/app/build.gradle` `applicationIdSuffix`, `android/app/src/debug/res/values/strings.xml`), so they install beside the store app with their own settings and stored credentials. The version reads `<package.json version>-pr<N>-<sha>-debug`.
+- **Updating:** each CI runner signs with a freshly generated debug key, so a newer artifact won't install over an older one: uninstall "Lychee Dev" first.
+- iOS has no sideload artifact: an iPhone only installs signed builds (TestFlight).
 
 ## Cutting a production release
 
@@ -60,5 +84,5 @@ Before the first production release that includes Feature 009: Play Console → 
 ## Troubleshooting
 
 - **"skipping" notice:** a required secret is empty (see the `CONFIGURED` expressions in `release.yml`).
-- **Build number already used:** both stores reject reused numbers; re-run creates a new run number, never re-use a run.
+- **Build number already used:** both stores reject reused numbers. A re-run of a failed run keeps its run number and is rejected again once that number was uploaded; start a new run instead (push to `main` or Run workflow).
 - **match fails to decrypt:** `MATCH_PASSWORD` differs from the one used to create the certificates.

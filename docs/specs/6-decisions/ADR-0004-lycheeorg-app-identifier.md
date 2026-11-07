@@ -1,6 +1,6 @@
 # ADR-0004: LycheeOrg app identifier
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0005 (identifier `dev.lycheeorg.lychee`)
 - **Date:** 2026-10-20
 - **Related features/specs:** repository setup (no feature); supersedes the app identifier of ADR-0003
 - **Related open questions:** none (decided by the owner after the move to LycheeOrg)

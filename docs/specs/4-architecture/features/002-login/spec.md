@@ -62,7 +62,7 @@ Once a server is connected (Feature 001), the user can sign in with their Lychee
  Sign-in page (after Connect)       Failure                           Server offers OAuth (FR-002-07)
 ┌──────────────────────────────┐    ┌──────────────────────────────┐  ┌──────────────────────────────┐
 │ ‹        Sign in             │    │ ‹        Sign in             │  │ ‹        Sign in             │
-│          lapaglia.pics       │    │          lapaglia.pics       │  │          photos.example.com  │
+│          photos.example.com  │    │          photos.example.com  │  │          photos.example.com  │
 │ Username                     │    │ Username                     │  │ Username                     │
 │ [matt                      ] │    │ [matt                      ] │  │ [                          ] │
 │ Password                     │    │ Password                     │  │ Password                     │
@@ -102,7 +102,7 @@ Once a server is connected (Feature 001), the user can sign in with their Lychee
 - **Units (Vitest):** `lycheeHttp` POST with JSON body and XSRF header, and cookie clearing; auth service: every `SignInResult` kind (S-002-01 … 05), `Auth::user` parsing, `Auth::config` parsing, sign-out clears cookies even when the request fails, 10 s timeouts with fake timers.
 - **Store (Vitest):** sign-in success and failures, refresh at launch, sign-out, reset on server change, no password in state (NFR-002-01).
 - **Lychee API contract:** fixtures recorded from Lychee 7.11.1: `Auth::user` for a guest, `Auth::config`, the 401 login error. The signed-in `Auth::user` fixture follows `UserResource` (no test account on the recorded server).
-- **Native:** Pixel 11 Pro and iOS simulator against `lapaglia.pics` and the LAN server: sign in, kill and relaunch (S-002-06), sign out, guest (S-002-10). S-002-03 and S-002-12 are unit-tested only.
+- **Native:** Pixel 11 Pro and iOS simulator against a public https Lychee server and the LAN server: sign in, kill and relaunch (S-002-06), sign out, guest (S-002-10). S-002-03 and S-002-12 are unit-tested only.
 
 ## Interface & Contract Catalogue
 

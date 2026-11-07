@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Debug builds show a distinct name so they can be told apart from the store app. -->
+<resources>
+    <string name="app_name">Lychee Dev</string>
+    <string name="title_activity_main">Lychee Dev</string>
+</resources>

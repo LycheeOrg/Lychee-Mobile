@@ -224,7 +224,7 @@ describe("photo albums (FR-008-06, API-008-02)", () => {
 		expect(await createGallery(SERVER, deps).photoAlbums("p1")).toEqual({
 			kind: "ok",
 			albums: [
-				{ id: "a1Bc2De3Fg4Hi5Jk6Lm7No8P", title: "Mallory LaPaglia" },
+				{ id: "a1Bc2De3Fg4Hi5Jk6Lm7No8P", title: "Summer 2026" },
 				{ id: "b2Cd3Ef4Gh5Ij6Kl7Mn8Op9Q", title: "Holidays" },
 			],
 		});

@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Lychee-Mobile contributors.
  */
 
-package dev.lycheeorg.mobile;
+package dev.lycheeorg.lychee;
 
 import android.Manifest;
 import android.app.Activity;
