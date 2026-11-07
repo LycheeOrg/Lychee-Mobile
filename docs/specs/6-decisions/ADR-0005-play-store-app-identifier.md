@@ -18,7 +18,7 @@ ADR-0004 set the app identifier to `dev.lycheeorg.mobile`. The Google Play Conso
 ## Consequences
 
 ### Positive
-- CI uploads go to the existing Google Play listing.
+- The release workflow (`release.yml`) uploads its signed bundles to the existing Google Play listing. Pull-request CI (`ci.yml`) uploads nothing to Google Play; it only publishes a debug APK (`dev.lycheeorg.lychee.debug`) as a GitHub Actions artifact.
 - Nothing has been published under `dev.lycheeorg.mobile`, so no users need to migrate.
 
 ### Negative

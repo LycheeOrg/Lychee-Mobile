@@ -44,14 +44,22 @@ Until the secrets below exist, each release job prints a notice and skips, so th
    - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`upload`), `ANDROID_KEY_PASSWORD`
 3. Enrol in Play App Signing (Google holds the app signing key; the keystore above is the upload key).
 4. Google Cloud: service account with access to the Play Console app (Users and permissions → invite the service account, release permissions), JSON key → `PLAY_STORE_SERVICE_ACCOUNT_JSON` (the whole file content).
-5. **First upload is manual:** build `bundleRelease` locally or download the CI artifact, upload it once to Internal testing in the console; afterwards fastlane takes over.
+5. **First upload is manual:** Google's API cannot upload to an app that has never had a bundle. Build a release bundle signed with the upload key (the pull-request CI artifact is a debug APK and cannot be used), upload it once to Internal testing in the console; afterwards fastlane takes over.
+   ```sh
+   npx vp run build && npx cap sync android
+   cd android
+   ANDROID_KEYSTORE_PATH=/path/to/upload.keystore ANDROID_KEYSTORE_PASSWORD=… ANDROID_KEY_ALIAS=upload ANDROID_KEY_PASSWORD=… \
+     VERSION_CODE=1 VERSION_NAME=0.1.0 ./gradlew bundleRelease
+   # → android/app/build/outputs/bundle/release/app-release.aab
+   ```
+   Keep `VERSION_CODE` below the `release.yml` run number so the first automated upload is accepted.
 6. Internal testing → Testers: add the tester list.
 
 ## Pull request builds (sideload)
 
 Every CI run (pull requests and pushes to `main`) uploads the Android debug APK as a workflow artifact, kept 14 days. It needs no secrets, so pull requests from forks get one too.
 
-- **Download:** the PR's Checks tab → CI → Summary → Artifacts → `lychee-android-pr<N>-<sha>` (signed-in GitHub users only). It arrives as a zip containing `app-debug.apk`.
+- **Download:** the PR's Checks tab → CI → Summary → Artifacts → `lychee-android-pr<N>-<sha>` (signed-in GitHub users only). It arrives as a zip containing `app-debug.apk`. `<sha>` is the PR's head commit, so it matches the PR's commit list; the APK itself is built from that commit merged into the current `main` (what GitHub Actions checks out for pull requests).
 - **Install:** copy the APK to the phone and open it, allowing "Install unknown apps" for the browser or file manager when asked; or `adb install -r app-debug.apk`.
 - **Identity:** debug builds use the app ID `dev.lycheeorg.lychee.debug` and the name "Lychee Dev" (`android/app/build.gradle` `applicationIdSuffix`, `android/app/src/debug/res/values/strings.xml`), so they install beside the store app with their own settings and stored credentials. The version reads `<package.json version>-pr<N>-<sha>-debug`.
 - **Updating:** each CI runner signs with a freshly generated debug key, so a newer artifact won't install over an older one: uninstall "Lychee Dev" first.
