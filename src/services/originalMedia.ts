@@ -23,7 +23,7 @@ export type OriginalMediaPlugin = {
 	/** NC-009-02: photo and video read access, so `pick()` can report the camera's file names (ADR-009-01). */
 	requestNameAccess: () => Promise<{ granted: boolean }>;
 	/** NC-011-01: the phone's camera app writes a photo into the app's capture folder (ADR-011-01). */
-	capture: (options: { name: string }) => Promise<NativePickedFile>;
+	capture: (options: { name: string; includeLocation?: boolean }) => Promise<NativePickedFile>;
 	deleteCapture: (options: { path: string }) => Promise<void>;
 	hasCamera: () => Promise<{ available: boolean }>;
 	/** NC-012-03: gives back the persistable read access `pick()` took for an item (FR-012-04). */

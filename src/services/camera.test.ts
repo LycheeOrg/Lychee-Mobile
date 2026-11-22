@@ -38,7 +38,9 @@ describe("takePhoto (FR-011-02)", () => {
 		const d = deps(platform);
 
 		expect(await takePhoto(d)).toEqual({ kind: "taken", file: TAKEN });
-		expect(d[platform].capture).toHaveBeenCalledWith({ name: "IMG_20261020_181342.jpg" });
+		expect(d[platform].capture).toHaveBeenCalledWith(
+			platform === "android" ? { name: "IMG_20261020_181342.jpg", includeLocation: true } : { name: "IMG_20261020_181342.jpg" },
+		);
 	});
 
 	it("has no camera in a browser", async () => {

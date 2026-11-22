@@ -10,7 +10,7 @@ import type { PickedFile } from "@/services/picker";
 /** NC-011-01, NC-011-02: what both platforms' capture code offers (ADR-011-01). */
 export type CapturePlugin = {
 	/** Opens the camera; the photo is written to the app's capture folder under `name` (made unique). */
-	capture: (options: { name: string }) => Promise<NativePickedFile>;
+	capture: (options: { name: string; includeLocation?: boolean }) => Promise<NativePickedFile>;
 	deleteCapture: (options: { path: string }) => Promise<void>;
 	hasCamera: () => Promise<{ available: boolean }>;
 };
@@ -46,7 +46,8 @@ export async function takePhoto(deps: CameraDeps = nativeDeps): Promise<CaptureO
 	}
 	const now = deps.now();
 	try {
-		const file = await plugin.capture({ name: captureName(now) });
+		const name = captureName(now);
+		const file = await plugin.capture(deps.platform() === "android" ? { name, includeLocation: true } : { name });
 		return { kind: "taken", file: { ...file, modifiedAt: file.modifiedAt ?? now.getTime() } };
 	} catch (error) {
 		const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;

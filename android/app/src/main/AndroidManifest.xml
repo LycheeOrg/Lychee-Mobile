@@ -52,6 +52,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Feature 015: Android captures get the phone location in EXIF when granted. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- ADR-005-01: unredacted GPS in photos picked for upload (NFR-005-04). -->
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
     <!-- ADR-007-01: saving downloads into Pictures/ and Movies/ on Android 7–9 (FR-007-05). -->

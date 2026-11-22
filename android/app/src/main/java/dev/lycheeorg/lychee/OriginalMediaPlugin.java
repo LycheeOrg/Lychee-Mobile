@@ -13,6 +13,8 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
+import android.location.Location;
+import android.location.LocationManager;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
@@ -70,6 +72,7 @@ import java.util.regex.Pattern;
         @Permission(alias = OriginalMediaPlugin.STORAGE, strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }),
         @Permission(alias = OriginalMediaPlugin.MEDIA, strings = { Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO }),
         @Permission(alias = OriginalMediaPlugin.LEGACY_MEDIA, strings = { Manifest.permission.READ_EXTERNAL_STORAGE }),
+        @Permission(alias = OriginalMediaPlugin.LOCATION, strings = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }),
     }
 )
 public class OriginalMediaPlugin extends Plugin {
@@ -79,6 +82,8 @@ public class OriginalMediaPlugin extends Plugin {
     /** NC-009-02 (ADR-009-01): reading the camera's file names; Android 13+ and older use different permissions. */
     static final String MEDIA = "media";
     static final String LEGACY_MEDIA = "legacyMedia";
+    /** Feature 015: adds the phone location to an Android capture's EXIF. */
+    static final String LOCATION = "location";
 
     private static final String UNREADABLE = "UNREADABLE";
     private static final String CANCELLED = "CANCELLED";
@@ -242,6 +247,24 @@ public class OriginalMediaPlugin extends Plugin {
             call.reject("A plain file name is required.", UNREADABLE);
             return;
         }
+        if (Boolean.TRUE.equals(call.getBoolean("includeLocation", false)) && getPermissionState(LOCATION) != PermissionState.GRANTED) {
+            call.getData().put("captureName", name);
+            requestPermissionForAlias(LOCATION, call, "captureLocationPermission");
+            return;
+        }
+        startCapture(call, name);
+    }
+
+    @PermissionCallback
+    private void captureLocationPermission(PluginCall call) {
+        String name = call == null ? null : call.getString("captureName");
+        if (call == null || name == null) {
+            return;
+        }
+        startCapture(call, name);
+    }
+
+    private void startCapture(PluginCall call, String name) {
         File dir = capturesDir();
         if (!dir.isDirectory() && !dir.mkdirs()) {
             call.reject("Can't create the capture folder.", UNREADABLE);
@@ -277,6 +300,9 @@ public class OriginalMediaPlugin extends Plugin {
             call.reject("capture canceled.", CANCELLED);
             return;
         }
+        if (getPermissionState(LOCATION) == PermissionState.GRANTED) {
+            writeCaptureLocation(target);
+        }
         JSObject file = new JSObject();
         file.put("path", Uri.fromFile(target).toString());
         file.put("name", target.getName());
@@ -284,6 +310,41 @@ public class OriginalMediaPlugin extends Plugin {
         file.put("size", target.length());
         file.put("modifiedAt", target.lastModified());
         call.resolve(file);
+    }
+
+    /** Feature 015: writes the newest location fix from the last ten minutes into capture EXIF. */
+    private void writeCaptureLocation(File target) {
+        LocationManager locationManager = (LocationManager) getContext().getSystemService(android.content.Context.LOCATION_SERVICE);
+        if (locationManager == null) {
+            return;
+        }
+        Location newest = null;
+        for (String provider : new String[] { LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER }) {
+            try {
+                Location location = locationManager.getLastKnownLocation(provider);
+                if (location == null || location.getTime() < System.currentTimeMillis() - 10 * 60 * 1000) {
+                    continue;
+                }
+                if (newest == null || location.getTime() > newest.getTime()) {
+                    newest = location;
+                }
+            } catch (SecurityException | IllegalArgumentException ignored) {
+                // The permission or provider can disappear while the camera app is open.
+            }
+        }
+        if (newest == null) {
+            return;
+        }
+        try {
+            ExifInterface exif = new ExifInterface(target.getAbsolutePath());
+            exif.setLatLong(newest.getLatitude(), newest.getLongitude());
+            if (newest.hasAltitude()) {
+                exif.setAltitude(newest.getAltitude());
+            }
+            exif.saveAttributes();
+        } catch (IOException ignored) {
+            // Capture upload still succeeds; NFR-005-04 reports it as without GPS.
+        }
     }
 
     /** FR-011-04: deletes a taken photo once Lychee has it; only files in the capture folder. */
