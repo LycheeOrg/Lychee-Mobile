@@ -31,12 +31,12 @@
 		"@capacitor/ios": "^8.6.2",
 		"@capacitor/preferences": "^8.0.1",
 		"@capawesome/capacitor-file-picker": "8.1.1",
-		"@ionic/vue": "^9.0.11",
-		"@ionic/vue-router": "^9.0.11",
+		"@ionic/vue": "^9.0.12",
+		"@ionic/vue-router": "^9.0.12",
 		"ionicons": "^8.1.0",
 		"swiper": "14.4.0",
-		"vue": "^3.5.45",
-		"vue-router": "^5.5.0"
+		"vue": "^3.5.46",
+		"vue-router": "^5.5.1"
 	},
 	"devDependencies": {
 		"@capacitor/cli": "^8.6.0",
