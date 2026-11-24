@@ -8,7 +8,7 @@ High-level planning document for Lychee-Mobile features.
 |------------|------|--------|----------|----------|---------|---------|----------|
 | 013 | Live photo toggle | Testing | Medium | mlapaglia | 2026-10-30 | 2026-10-30 | LIVE label is a button that starts and stops the looping clip, replacing press and hold (amends FR-004-06). Code and tests done; device check open. See `features/013-live-photo-toggle/`. |
 | 014 | App improvements | In Progress | Medium | — | 2026-11-22 | 2026-11-22 | Q-014-01 resolved to a quality and reliability audit. Baseline gates and dependency compatibility are the first increment. |
-| 015 | Android camera GPS | In Progress | High | — | 2026-11-22 | 2026-11-22 | Q-015-01 resolved to adding the phone location to Android capture EXIF; permission is requested at Take photo. |
+| 015 | Android camera GPS | In Progress | High | — | 2026-11-22 | 2026-11-24 | Q-015-01 resolved to adding the phone location to Android capture EXIF; owner approved AndroidX ExifInterface 1.3.7 (Q-015-02). Tests, typecheck, web build and Android assemble pass; Pixel device check remains. |
 
 ## Backlog
 

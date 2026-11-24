@@ -26,7 +26,7 @@ Android currently captures a photo with `OriginalMediaPlugin` in the camera app'
 
 ## Open Questions
 
-None. [Q-015-01](open-questions.md#q-015-01---android-gps-implementation) resolved to Option A.
+None. [Q-015-01](open-questions.md#q-015-01---android-gps-implementation) and [Q-015-02](open-questions.md#q-015-02---androidx-exifinterface-dependency) are resolved.
 
 ## Functional Requirements
 
@@ -39,7 +39,7 @@ None. [Q-015-01](open-questions.md#q-015-01---android-gps-implementation) resolv
 | ID | Requirement | Driver | Measurement | Dependencies | Source |
 |----|-------------|--------|-------------|--------------|--------|
 | NFR-015-01 | Existing Android byte-for-byte behavior is preserved when location is unavailable. | Avoid degrading current capture. | Permission denial/no fix produces a normal captured file and upload. | Android LocationManager and ExifInterface. | AGENTS.md |
-| NFR-015-02 | No library dependency is added. | Native Android APIs provide the required behavior. | `package.json` remains unchanged for this feature. | Android SDK. | AGENTS.md |
+| NFR-015-02 | Use only the approved Exif library dependency required for GPS metadata writing; do not add unrelated libraries. | The implementation uses AndroidX ExifInterface for GPS EXIF writing. | `package.json` remains unchanged; Android uses `androidx.exifinterface:exifinterface:1.3.7`, approved by the owner on 2026-11-24. | AndroidX ExifInterface. | Owner approval, Q-015-02 |
 
 ## UI / Interaction Mock-ups
 
@@ -71,4 +71,4 @@ None. [Q-015-01](open-questions.md#q-015-01---android-gps-implementation) resolv
 
 | ID | Plugin / permission | Behaviour |
 |----|---------------------|-----------|
-| NC-015-01 | `OriginalMediaPlugin` with `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` | Requests location only for Android Take photo, uses a fix no older than ten minutes, and writes GPS EXIF with `ExifInterface`. |
+| NC-015-01 | `OriginalMediaPlugin` with `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, and AndroidX ExifInterface 1.3.7 | Requests location only for Android Take photo, uses a fix no older than ten minutes, and writes GPS EXIF with AndroidX `ExifInterface`. |
